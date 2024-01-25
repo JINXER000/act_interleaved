@@ -34,13 +34,13 @@ def main(args):
     num_epochs = args['num_epochs']
 
     # get task parameters
-    is_sim = task_name[:4] == 'sim_'
+    is_sim = task_name[:4] == 'sim_' ## key point
     if is_sim:
         from constants import SIM_TASK_CONFIGS
         task_config = SIM_TASK_CONFIGS[task_name]
-    # else:
-    #     from aloha_scripts.constants import TASK_CONFIGS
-    #     task_config = TASK_CONFIGS[task_name]
+    else:
+        from aloha_scripts.constants import TASK_CONFIGS
+        task_config = TASK_CONFIGS[task_name]
     dataset_dir = task_config['dataset_dir']
     num_episodes = task_config['num_episodes']
     episode_len = task_config['episode_len']
@@ -177,20 +177,16 @@ def eval_bc(config, ckpt_name, save_episode=True):
     pre_process = lambda s_qpos: (s_qpos - stats['qpos_mean']) / stats['qpos_std']
     post_process = lambda a: a * stats['action_std'] + stats['action_mean']
 
-    ## load environment
-    from sim_env import make_sim_env
-    env = make_sim_env(task_name)
-    env_max_reward = env.task.max_reward
-    # if real_robot:
-    #     from aloha_scripts.robot_utils import move_grippers # requires aloha
-    #     from aloha_scripts.real_env import make_real_env # requires aloha
-    #     env = make_real_env(init_node=True)
-    #     env_max_reward = 0
-    # else:
-    #     from sim_env import make_sim_env
-    #     env = make_sim_env(task_name)
-    #     env_max_reward = env.task.max_reward
-
+    # load environment
+    if real_robot:
+        from aloha_scripts.robot_utils import move_grippers # requires aloha
+        from aloha_scripts.real_env import make_real_env # requires aloha
+        env = make_real_env(init_node=True)
+        env_max_reward = 0
+    else:
+        from sim_env import make_sim_env
+        env = make_sim_env(task_name)
+        env_max_reward = env.task.max_reward
 
     query_frequency = policy_config['num_queries']
     if temporal_agg:
@@ -282,9 +278,9 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 rewards.append(ts.reward)
 
             plt.close()
-        # if real_robot:
-        #     move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
-        #     pass
+        if real_robot:
+            move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
+            pass
 
         rewards = np.array(rewards)
         episode_return = np.sum(rewards[rewards!=None])
