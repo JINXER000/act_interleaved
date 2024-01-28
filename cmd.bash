@@ -6,20 +6,26 @@ python3 record_sim_episodes.py --task_name sim_insertion_scripted --dataset_dir 
 
 
 # train 
-python3 imitate_episodes.py --task_name sim_transfer_cube_scripted --ckpt_dir ./ckpt/sim_transfer_cube_scripted --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0 
-python3 imitate_episodes.py --task_name sim_transfer_cube_human --ckpt_dir ./ckpt/sim_transfer_cube_human --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0 
+python3 imitate_episodes.py --task_name sim_transfer_cube_scripted --ckpt_dir ./ckpt_dir/transfer_cube_scripted_sim --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0
+
+python3 imitate_episodes.py --task_name sim_transfer_cube_human --ckpt_dir ./ckpt/sim_transfer_cube_human --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0
 python3 imitate_episodes.py --task_name sim_insertion_scripted --ckpt_dir ./ckpt/sim_insertion_scripted --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0 
 python3 imitate_episodes.py --task_name sim_insertion_human --ckpt_dir ./ckpt/sim_insertion_human --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0 
 
+# train - aloha
+python3 imitate_episodes.py --task_name aloha_insert_10s --ckpt_dir ./ckpt_dir/aloha_insert_10s --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0
+
+
 
 # evaluation
-python3 imitate_episodes.py \
+python3 imitate_episodes_sim.py \
 --task_name sim_transfer_cube_scripted \
---ckpt_dir ./ckpt/sim_transfer_cube_scripted \
+--ckpt_dir ./ckpt_dir/sim_transfer_cube_scripted \
 --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 \
 --num_epochs 2000 --lr 1e-5 \
---seed 0 --eval --onscreen_render \
---temporal_agg
+--seed 0 --eval 
+# --onscreen_render \
+# --temporal_agg
 
 
 python3 imitate_episodes.py \
