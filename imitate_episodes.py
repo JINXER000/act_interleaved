@@ -22,9 +22,13 @@ import IPython
 e = IPython.embed
 
 import ipdb
-import os
 
+import os
 from aloha.aloha_scripts import constants
+
+import torch
+from torch.utils.tensorboard import SummaryWriter
+# writer = SummaryWriter()
 
 
 def main(args):
@@ -39,6 +43,9 @@ def main(args):
     batch_size_train = args['batch_size']
     batch_size_val = args['batch_size']
     num_epochs = args['num_epochs']
+
+    ## set tensorboard
+    writer = SummaryWriter(log_dir=ckpt_dir)
 
     # get task parameters
     is_sim = task_name[:4] == 'sim_' ## key point
@@ -74,7 +81,7 @@ def main(args):
                          'camera_names': camera_names,
                          }
     elif policy_class == 'CNNMLP':
-        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
+        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone': backbone, 'num_queries': 1,
                          'camera_names': camera_names,}
     else:
         raise NotImplementedError
@@ -116,7 +123,7 @@ def main(args):
     with open(stats_path, 'wb') as f:
         pickle.dump(stats, f)
 
-    best_ckpt_info = train_bc(train_dataloader, val_dataloader, config)
+    best_ckpt_info = train_bc(train_dataloader, val_dataloader, config, writer)
     best_epoch, min_val_loss, best_state_dict = best_ckpt_info
 
     # save best checkpoint
@@ -326,7 +333,7 @@ def forward_pass(data, policy):
     return policy(qpos_data, image_data, action_data, is_pad) # TODO remove None
 
 
-def train_bc(train_dataloader, val_dataloader, config):
+def train_bc(train_dataloader, val_dataloader, config, writer):
     num_epochs = config['num_epochs']
     ckpt_dir = config['ckpt_dir']
     seed = config['seed']
@@ -365,6 +372,10 @@ def train_bc(train_dataloader, val_dataloader, config):
             summary_string += f'{k}: {v.item():.3f} '
         print(summary_string)
 
+        # tensorboard - validation loss
+        if epoch % 10 == 0:
+            writer.add_scalar("Loss/validation", epoch_val_loss, epoch)
+
         # training
         policy.train()
         optimizer.zero_grad()
@@ -384,6 +395,10 @@ def train_bc(train_dataloader, val_dataloader, config):
             summary_string += f'{k}: {v.item():.3f} '
         print(summary_string)
 
+        # tensorboard - training loss
+        if epoch % 10 == 0:
+            writer.add_scalar("Loss/train", epoch_train_loss, epoch)
+
         if epoch % 100 == 0:
             ckpt_path = os.path.join(ckpt_dir, f'policy_epoch_{epoch}_seed_{seed}.ckpt')
             torch.save(policy.state_dict(), ckpt_path)
@@ -399,6 +414,9 @@ def train_bc(train_dataloader, val_dataloader, config):
 
     # save training curves
     plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed)
+
+    writer.flush()
+    writer.close()
 
     return best_ckpt_info
 
