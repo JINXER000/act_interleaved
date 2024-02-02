@@ -60,6 +60,7 @@ def main(args):
     num_epochs = args['num_epochs']
 
     ## set tensorboard
+    # ipdb.set_trace()
     if is_eval == False:
         writer = SummaryWriter(log_dir=ckpt_dir)
 
