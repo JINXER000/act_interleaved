@@ -22,9 +22,10 @@ import time
 
 from constants import DT
 from constants import PUPPET_GRIPPER_JOINT_OPEN
-from utils import load_data # data functions
-from utils import sample_box_pose, sample_insertion_pose # robot functions
-from utils import compute_dict_mean, set_seed, detach_dict # helper functions
+
+from act_utils import load_data # data functions
+from act_utils import sample_box_pose, sample_insertion_pose # robot functions
+from act_utils import compute_dict_mean, set_seed, detach_dict # helper functions
 from policy import ACTPolicy, CNNMLPPolicy
 from visualize_episodes import save_videos
 
@@ -60,7 +61,7 @@ def main(args):
     batch_size_val = args['batch_size']
     num_epochs = args['num_epochs']
 
-
+    with_planning = args['with_planning']
 
     # get task parameters
     is_sim = task_name[:4] == 'sim_' ## key point
@@ -119,7 +120,7 @@ def main(args):
         ckpt_names = [f'policy_last.ckpt']
         results = []
         for ckpt_name in ckpt_names:
-            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True)
+            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, with_planning=with_planning)
             results.append([ckpt_name, success_rate, avg_return])
 
         for ckpt_name, success_rate, avg_return in results:
@@ -150,7 +151,7 @@ def get_image(ts, camera_names):
     return curr_image
 
 
-def eval_bc(config, ckpt_name, save_episode=True):
+def eval_bc(config, ckpt_name, save_episode=True, with_planning = False):
 
     set_seed(1000)
     ckpt_dir = config['ckpt_dir']
@@ -186,7 +187,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
         from aloha.aloha_scripts.robot_utils import move_grippers # requires aloha
         from aloha.aloha_scripts.real_env import make_real_env # requires aloha
 
-        env = make_real_env(init_node=True)
+        env = make_real_env(init_node=True, setup_robots= not with_planning)
         env_max_reward = 0
     else:
         from sim_env import make_sim_env
@@ -205,19 +206,19 @@ def eval_bc(config, ckpt_name, save_episode=True):
     highest_rewards = []
     for rollout_id in range(num_rollouts):
         rollout_id += 0
-        ### set task
-        if 'sim_transfer_cube' in task_name:
-            BOX_POSE[0] = sample_box_pose() # used in sim reset
-        elif 'sim_insertion' in task_name:
-            BOX_POSE[0] = np.concatenate(sample_insertion_pose()) # used in sim reset
+        # ### set task
+        # if 'sim_transfer_cube' in task_name:
+        #     BOX_POSE[0] = sample_box_pose() # used in sim reset
+        # elif 'sim_insertion' in task_name:
+        #     BOX_POSE[0] = np.concatenate(sample_insertion_pose()) # used in sim reset
 
-        ts = env.reset()
+        ts = env.reset(fake=with_planning)
 
-        ### onscreen render
-        if onscreen_render:
-            ax = plt.subplot()
-            plt_img = ax.imshow(env._physics.render(height=480, width=640, camera_id=onscreen_cam))
-            plt.ion()
+        # ### onscreen render
+        # if onscreen_render:
+        #     ax = plt.subplot()
+        #     plt_img = ax.imshow(env._physics.render(height=480, width=640, camera_id=onscreen_cam))
+        #     plt.ion()
 
         ### evaluation loop
         if temporal_agg:
@@ -233,11 +234,11 @@ def eval_bc(config, ckpt_name, save_episode=True):
         ep_t0 = time.perf_counter()
         with torch.inference_mode():
             for t in range(max_timesteps):
-                ### update onscreen render and wait for DT
-                if onscreen_render:
-                    image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)
-                    plt_img.set_data(image)
-                    plt.pause(DT)
+                # ### update onscreen render and wait for DT
+                # if onscreen_render:
+                #     image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)
+                #     plt_img.set_data(image)
+                #     plt.pause(DT)
 
                 ### process previous timestep to get qpos and image_list
                 obs = ts.observation
@@ -269,8 +270,8 @@ def eval_bc(config, ckpt_name, save_episode=True):
                         raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)
                     else:
                         raw_action = all_actions[:, t % query_frequency]
-                elif config['policy_class'] == "CNNMLP":
-                    raw_action = policy(qpos, curr_image)
+                # elif config['policy_class'] == "CNNMLP":
+                #     raw_action = policy(qpos, curr_image)
                 else:
                     raise NotImplementedError
 
@@ -292,7 +293,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 print(f'Step {t} inference time: {t1 - t0} s')
 
             plt.close()
-        if real_robot:
+        if real_robot and not with_planning:
             move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
             pass
         ep_t1 = time.perf_counter()
@@ -328,6 +329,27 @@ def eval_bc(config, ckpt_name, save_episode=True):
 
     return success_rate, avg_return
 
+def eval_main(with_planning = False):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--eval', action='store_false')
+    parser.add_argument('--onscreen_render', action='store_true')
+    parser.add_argument('--ckpt_dir', type=str, default='/home/xuhang/interbotix_ws/src/ACT/ckpt_dir/aloha_transfer_tape')
+    parser.add_argument('--policy_class',  type=str, default='ACT')
+    parser.add_argument('--task_name', type=str, help='task_name', default='aloha_transfer_tape')
+    parser.add_argument('--batch_size', type=int, help='batch_size', default=8)
+    parser.add_argument('--seed', type=int, help='seed', default=0)
+    parser.add_argument('--num_epochs', type=int, help='num_epochs', default=2000)
+    parser.add_argument('--lr', type=float, help='lr', default=1e-5)
+
+    # for ACT
+    parser.add_argument('--kl_weight', type=int, help='KL Weight', default=10)
+    parser.add_argument('--chunk_size', type=int, help='chunk_size', default=100)
+    parser.add_argument('--hidden_dim', type=int, help='hidden_dim', default=512)
+    parser.add_argument('--dim_feedforward', type=int, help='dim_feedforward', default=3200)
+    parser.add_argument('--temporal_agg', action='store_false')    
+
+    parser.add_argument('--with_planning', default=with_planning)
+    main(vars(parser.parse_args()))
 
 
 if __name__ == '__main__':
@@ -349,42 +371,7 @@ if __name__ == '__main__':
     # parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     # parser.add_argument('--temporal_agg', action='store_true')
     
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--eval', action='store_false')
-    parser.add_argument('--onscreen_render', action='store_true')
-    parser.add_argument('--ckpt_dir', type=str, default='/home/xuhang/interbotix_ws/src/ACT/ckpt_dir/aloha_transfer_tape')
-    parser.add_argument('--policy_class',  type=str, default='ACT')
-    parser.add_argument('--task_name', type=str, help='task_name', default='aloha_transfer_tape')
-    parser.add_argument('--batch_size', type=int, help='batch_size', default=8)
-    parser.add_argument('--seed', type=int, help='seed', default=0)
-    parser.add_argument('--num_epochs', type=int, help='num_epochs', default=2000)
-    parser.add_argument('--lr', type=float, help='lr', default=1e-5)
-
-    # for ACT
-    parser.add_argument('--kl_weight', type=int, help='KL Weight', default=10)
-    parser.add_argument('--chunk_size', type=int, help='chunk_size', default=100)
-    parser.add_argument('--hidden_dim', type=int, help='hidden_dim', default=512)
-    parser.add_argument('--dim_feedforward', type=int, help='dim_feedforward', default=3200)
-    parser.add_argument('--temporal_agg', action='store_false')    
+    eval_main(with_planning=True)
 
 
-    main(vars(parser.parse_args()))
-
-    # param_dict = {}
-    # param_dict['eval'] = True
-    # param_dict['onscreen_render'] = False
-    # param_dict['ckpt_dir'] = './ckpt_dir/aloha_transfer_tape'
-    # param_dict['policy_class'] = 'ACT'
-    # param_dict['task_name'] = 'aloha_transfer_tape'
-    # param_dict['batch_size'] = 8
-    # param_dict['seed'] = 0
-    # param_dict['num_epochs'] = 2000
-    # param_dict['lr'] = 1e-5
-    # param_dict['kl_weight'] = 10
-    # param_dict['chunk_size'] = 100
-    # param_dict['hidden_dim'] = 512
-    # param_dict['dim_feedforward'] = 3200
-    # param_dict['temporal_agg'] = True
-
-    # main(param_dict)
-
+  
