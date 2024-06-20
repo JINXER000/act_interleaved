@@ -48,7 +48,7 @@ from torch.utils.tensorboard import SummaryWriter
 # writer = SummaryWriter()
 
 
-def main(args):
+def main(args, env = None):
 
     set_seed(1)
     # command line parameters
@@ -116,11 +116,13 @@ def main(args):
     }
 
     if is_eval:
-        # ckpt_names = [f'policy_best.ckpt']
-        ckpt_names = [f'policy_last.ckpt']
+        ckpt_names = [f'policy_best.ckpt']
+        # ckpt_names = [f'policy_last.ckpt']
         results = []
         for ckpt_name in ckpt_names:
-            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, with_planning=with_planning)
+            success_rate, avg_return = eval_bc(config, ckpt_name, \
+                                               save_episode=True, with_planning=with_planning,\
+                                                env = env)
             results.append([ckpt_name, success_rate, avg_return])
 
         for ckpt_name, success_rate, avg_return in results:
@@ -150,8 +152,17 @@ def get_image(ts, camera_names):
     curr_image = torch.from_numpy(curr_image / 255.0).float().cuda().unsqueeze(0)
     return curr_image
 
+def construct_lfd_env( setup_robots = True):
+    from aloha.aloha_scripts.real_env import make_real_env # requires aloha
 
-def eval_bc(config, ckpt_name, save_episode=True, with_planning = False):
+    env = make_real_env(init_node=True, setup_robots= not setup_robots)
+
+    return env
+
+
+
+
+def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = None):
 
     set_seed(1000)
     ckpt_dir = config['ckpt_dir']
@@ -187,7 +198,8 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False):
         from aloha.aloha_scripts.robot_utils import move_grippers # requires aloha
         from aloha.aloha_scripts.real_env import make_real_env # requires aloha
 
-        env = make_real_env(init_node=True, setup_robots= not with_planning)
+        if env is None:
+            env = make_real_env(init_node=True, setup_robots= not with_planning)
         env_max_reward = 0
     else:
         from sim_env import make_sim_env
@@ -277,8 +289,15 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False):
 
                 ### post-process actions
                 raw_action = raw_action.squeeze(0).cpu().numpy()
+
+                # debug
+                
                 action = post_process(raw_action)
                 target_qpos = action
+
+                if t< 150:
+                    target_qpos[6] = qpos_numpy[6] # gripper remain fixed
+                    target_qpos[13] = qpos_numpy[13]
 
                 t1 = time.perf_counter()
 
@@ -293,6 +312,12 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False):
                 print(f'Step {t} inference time: {t1 - t0} s')
 
             plt.close()
+
+        print('episode done')
+        # ts = env.reset(fake=False)
+        env.puppet_bot_left.dxl.robot_reboot_motors("single", "gripper", True)
+        env.puppet_bot_right.dxl.robot_reboot_motors("single", "gripper", True)
+
         if real_robot and not with_planning:
             move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
             pass
@@ -329,7 +354,7 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False):
 
     return success_rate, avg_return
 
-def eval_main(with_planning = False):
+def eval_main(with_planning = False, env = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--eval', action='store_false')
     parser.add_argument('--onscreen_render', action='store_true')
@@ -349,7 +374,7 @@ def eval_main(with_planning = False):
     parser.add_argument('--temporal_agg', action='store_false')    
 
     parser.add_argument('--with_planning', default=with_planning)
-    main(vars(parser.parse_args()))
+    main(vars(parser.parse_args()), env = env)
 
 
 if __name__ == '__main__':
@@ -371,7 +396,7 @@ if __name__ == '__main__':
     # parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     # parser.add_argument('--temporal_agg', action='store_true')
     
-    eval_main(with_planning=True)
+    eval_main(with_planning=False)
 
 
   
