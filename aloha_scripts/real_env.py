@@ -4,6 +4,9 @@ import collections
 import matplotlib.pyplot as plt
 import dm_env
 
+import sys
+sys.path.append("/home/xuhang/interbotix_ws/src/ACT/aloha/aloha_scripts/")
+
 from constants import DT, START_ARM_POSE, MASTER_GRIPPER_JOINT_NORMALIZE_FN, PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN, PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_JOINT_OPEN, PUPPET_GRIPPER_JOINT_CLOSE

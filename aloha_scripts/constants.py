@@ -1,14 +1,55 @@
 ### Task parameters
 
-DATA_DIR = '<put your data dir here>'
+
+DATA_DIR = '/home/xuhang/Desktop/aloha_data'
 TASK_CONFIGS = {
-    'aloha_wear_shoe':{
-        'dataset_dir': DATA_DIR + '/aloha_wear_shoe',
+    'aloha_starbucks':{
+        'dataset_dir': DATA_DIR + '/aloha_starbucks',
         'num_episodes': 50,
-        'episode_len': 1000,
+        'episode_len': 450,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+    'aloha_conveyor':{
+        'dataset_dir': DATA_DIR + '/aloha_conveyor',
+        'num_episodes': 50,
+        'episode_len': 600,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+    'aloha_transfer_tape':{
+        'dataset_dir': DATA_DIR + '/aloha_transfer_tape',
+        'num_episodes': 50,
+        'episode_len': 500,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
 }
+
+# DATA_DIR = '/home/xuhang/Desktop/aloha_data'
+# TASK_CONFIGS = {
+#     'aloha_screwdriver':{
+#         'dataset_dir': DATA_DIR + '/aloha_screwdriver',
+#         'num_episodes': 50,
+#         'episode_len': 800,
+#         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+#     },
+# }
+
+# DATA_DIR = '/home/xuhang/Desktop/aloha_data'
+# TASK_CONFIGS = {
+#     'aloha_board_ram':{
+#         'dataset_dir': DATA_DIR + '/aloha_board_ram',
+#         'num_episodes': 50,
+#         'episode_len': 750,
+#         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+#     },
+# }
+# TASK_CONFIGS = {
+#     'aloha_ziploc':{
+#         'dataset_dir': DATA_DIR + '/aloha_ziploc_new',
+#         'num_episodes': 50,
+#         'episode_len': 500,
+#         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+#     },
+# }
 
 ### ALOHA fixed constants
 DT = 0.02
