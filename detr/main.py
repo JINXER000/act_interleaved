@@ -52,17 +52,30 @@ def get_args_parser():
     parser.add_argument('--masks', action='store_true',
                         help="Train segmentation head if the flag is provided")
 
-    # repeat args in imitate_episodes just to avoid error. Will not be used
-    parser.add_argument('--eval', action='store_true')
+    # # repeat args in imitate_episodes just to avoid error. Will not be used
+    # parser.add_argument('--eval', action='store_true')
+    # parser.add_argument('--onscreen_render', action='store_true')
+    # parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=True)
+    # parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)
+    # parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)
+    # parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
+    # parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
+    # parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
+    # parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)
+    # parser.add_argument('--temporal_agg', action='store_true')
+
+    parser.add_argument('--eval', action='store_false')
     parser.add_argument('--onscreen_render', action='store_true')
-    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=True)
-    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)
-    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)
-    parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
-    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
-    parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
-    parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)
-    parser.add_argument('--temporal_agg', action='store_true')
+    parser.add_argument('--ckpt_dir', type=str, default='/home/xuhang/interbotix_ws/src/ACT/ckpt_dir/aloha_transfer_tape')
+    parser.add_argument('--policy_class',  type=str, default='ACT')
+    parser.add_argument('--task_name', type=str, help='task_name', default='aloha_transfer_tape')
+    parser.add_argument('--seed', type=int, help='seed', default=0)
+    parser.add_argument('--num_epochs', type=int, help='num_epochs', default=2000)
+
+    # for ACT
+    parser.add_argument('--kl_weight', type=int, help='KL Weight', default=10)
+    parser.add_argument('--chunk_size', type=int, help='chunk_size', default=100)
+    parser.add_argument('--temporal_agg', action='store_false')    
 
     return parser
 

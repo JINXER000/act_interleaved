@@ -15,7 +15,7 @@ import os
 import sys
 sys.path.append(os.getcwd()+"/detr/")
 
-from util.misc import NestedTensor, is_main_process
+from ..util.misc import NestedTensor, is_main_process
 
 from .position_encoding import build_position_encoding
 
