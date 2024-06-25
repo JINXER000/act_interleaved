@@ -47,6 +47,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 # writer = SummaryWriter()
 
+END_LFD = [False]
 
 def main(args, env = None):
 
@@ -160,7 +161,15 @@ def construct_lfd_env( setup_robots = True):
     return env
 
 
-
+def limit_step_diff(target_qpos, qpos, max_diff = 0.06):
+    
+    cur_diff = target_qpos - qpos
+    rectified_diff = np.clip(cur_diff, -max_diff, max_diff)
+    rectified_target_qpos = qpos + rectified_diff
+    # gripper remain fixed
+    rectified_target_qpos[6] = target_qpos[6] 
+    rectified_target_qpos[13] = target_qpos[13]
+    return rectified_target_qpos
 
 def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = None):
 
@@ -218,19 +227,9 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = N
     highest_rewards = []
     for rollout_id in range(num_rollouts):
         rollout_id += 0
-        # ### set task
-        # if 'sim_transfer_cube' in task_name:
-        #     BOX_POSE[0] = sample_box_pose() # used in sim reset
-        # elif 'sim_insertion' in task_name:
-        #     BOX_POSE[0] = np.concatenate(sample_insertion_pose()) # used in sim reset
 
         ts = env.reset(fake=with_planning)
 
-        # ### onscreen render
-        # if onscreen_render:
-        #     ax = plt.subplot()
-        #     plt_img = ax.imshow(env._physics.render(height=480, width=640, camera_id=onscreen_cam))
-        #     plt.ion()
 
         ### evaluation loop
         if temporal_agg:
@@ -243,14 +242,15 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = N
         rewards = []
         inference_time_list = []
 
+        max_step_diff_dict = {'joint': [], 'jval': []}
+
         ep_t0 = time.perf_counter()
         with torch.inference_mode():
             for t in range(max_timesteps):
-                # ### update onscreen render and wait for DT
-                # if onscreen_render:
-                #     image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)
-                #     plt_img.set_data(image)
-                #     plt.pause(DT)
+
+                # early stop upon receiving signal
+                if END_LFD[0]:
+                    break
 
                 ### process previous timestep to get qpos and image_list
                 obs = ts.observation
@@ -282,8 +282,6 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = N
                         raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)
                     else:
                         raw_action = all_actions[:, t % query_frequency]
-                # elif config['policy_class'] == "CNNMLP":
-                #     raw_action = policy(qpos, curr_image)
                 else:
                     raise NotImplementedError
 
@@ -295,9 +293,21 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = N
                 action = post_process(raw_action)
                 target_qpos = action
 
-                if t< 150:
-                    target_qpos[6] = qpos_numpy[6] # gripper remain fixed
-                    target_qpos[13] = qpos_numpy[13]
+                ## required when learn eepose
+                # if t< 150:
+                #     target_qpos[6] = qpos_numpy[6] # gripper remain fixed
+                #     target_qpos[13] = qpos_numpy[13]
+
+                # target_qpos_12d = np.concatenate([target_qpos[:6], target_qpos[7:12]])
+                # qpos_12d = np.concatenate([qpos_numpy[:6], qpos_numpy[7:12]])
+                # step_diff = target_qpos_12d - qpos_12d
+                # max_diff_joint = np.argmax(np.abs(step_diff))
+                # max_diff_val = step_diff[max_diff_joint]
+                # max_step_diff_dict['joint'].append(max_diff_joint)
+                # max_step_diff_dict['jval'].append(max_diff_val)
+
+                ### limit the step difference to 0.06
+                target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.06)
 
                 t1 = time.perf_counter()
 
@@ -311,7 +321,7 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = N
                 inference_time_list.append(t1 - t0)
                 print(f'Step {t} inference time: {t1 - t0} s')
 
-            plt.close()
+            # plt.close()
 
         print('episode done')
         # ts = env.reset(fake=False)
