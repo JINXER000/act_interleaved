@@ -270,7 +270,7 @@ class ACT_Evaluator(object):
             target_qpos = action
 
             ### limit the step difference to 0.06
-            target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.06)
+            target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.09)
 
             ### step the environment
             self.ts = self.env.step(target_qpos)
@@ -278,7 +278,7 @@ class ACT_Evaluator(object):
             self.t += 1
 
     def reset_all(self, reset_grippers = True):
-        self.ts = self.env.reset(fake=True)
+        self.ts = self.env.reset(fake=self.with_planning)
         if reset_grippers:
             self.env.puppet_bot_left.dxl.robot_reboot_motors("single", "gripper", True)
             self.env.puppet_bot_right.dxl.robot_reboot_motors("single", "gripper", True)
@@ -289,7 +289,7 @@ class ACT_Evaluator(object):
 
 
 if __name__ == '__main__':
-    evaluator = ACT_Evaluator(with_planning=True)
+    evaluator = ACT_Evaluator(with_planning=False)
     for i in range (evaluator.max_timesteps):
         evaluator.inference()
         print(f'Step {i} done')

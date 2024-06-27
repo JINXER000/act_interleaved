@@ -307,7 +307,7 @@ def eval_bc(config, ckpt_name, save_episode=True, with_planning = False, env = N
                 # max_step_diff_dict['jval'].append(max_diff_val)
 
                 ### limit the step difference to 0.06
-                target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.06)
+                # target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.1)
 
                 t1 = time.perf_counter()
 
