@@ -34,6 +34,9 @@ class ImageRecorder:
             rospy.Subscriber(f"/usb_{cam_name}/image_raw", Image, callback_func)
             if self.is_debug:
                 setattr(self, f'{cam_name}_timestamps', deque(maxlen=50))
+        ## add realsense cb
+        rospy.Subscriber("/camera/color/image_raw", Image, self.image_cb_cam_high)
+
         time.sleep(0.5)
 
     def image_cb(self, cam_name, data):

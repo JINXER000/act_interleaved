@@ -34,32 +34,6 @@ import json
 
 GRIPPER_THRETH = 0.03
 
-def record_grasp_pose(robot_id, jval_14d = [], tgt_obj_point = None,  \
-                      ee_trans_ls = [], ee_rot_ls = [], obj_point_ls = [], **kwargs):
-    if RBT_ID[robot_id] == 'left':
-        joint_vals = jval_14d[:6]
-        gripper_val = PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(jval_14d[6])
-    else:
-        joint_vals = jval_14d[7:13]
-        gripper_val = PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(jval_14d[13])
-    
-    if gripper_val >= GRIPPER_THRETH:
-        return False
-    # compute the eepose
-    eetrans = qpos_to_eetrans(joint_vals, robot_id)
-    eetrans_t = eetrans[:3, 3].reshape(3)
-    eepose_R =  eetrans[:3, :3].reshape(9)
-
-    assert tgt_obj_point is not None
-    grasp_dist = np.linalg.norm(eetrans_t - tgt_obj_point)
-    if grasp_dist > 0.1:
-        return False
-    
-    ee_trans_ls.append(eetrans_t)
-    ee_rot_ls.append(eepose_R)
-    obj_point_ls.append(tgt_obj_point)
-    
-    return True
 
 
 # def capture_pointcloud(task_name= 'aloha_transfer_tape', episode_idx = 101, sensor_dir = None, save_dir = None, initilized = False, **kwargs):
@@ -367,7 +341,7 @@ def debug():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='aloha_transfer_tape', required=False)
-    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=99, required=False)
+    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=0, required=False)
     main(vars(parser.parse_args()))
     # debug()
 

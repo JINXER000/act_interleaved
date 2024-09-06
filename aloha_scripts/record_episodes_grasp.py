@@ -99,7 +99,7 @@ def capture_pointcloud(task_name= 'aloha_transfer_tape', episode_idx = 101, sens
     # do segmentation 
     connect(use_gui=True)
     robot_body, names, movable_bodies, stackable_bodies = load_world_0obj()
-    estimator = estimation_policy(robot_body, img_src = 'real', \
+    estimator = estimation_policy(robot_body, mode = 'data_process', img_src = 'real', \
                                   file_path=sensor_dir,  teleport=False, client=CLIENT)
     # belief = estimator.estimate_state(graspdata_dir = save_dir, episode_idx = episode_idx)
     belief = estimator.estimate_state()
