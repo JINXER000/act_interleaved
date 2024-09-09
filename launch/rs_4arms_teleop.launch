@@ -88,10 +88,11 @@
     args="0 0.25 0 0 0 0 /world /$(arg robot_name_puppet_right)/base_link"/>
 
 
+  <remap from="/camera/color/image_raw" to="/usb_cam_high/image_raw" />
+  <remap from="/camera/color/camera_info" to="/usb_cam_high/camera_info" />
+
   <include  file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
     <param name="tf_prefix" value="measured/camera" />
-    <!-- <remap from="camera/color/image_raw" to="usb_cam_high/image_raw" />
-    <remap from="camera/color/camera_info" to="usb_cam_high/camera_info" /> -->
   </include>
 
   <node name="usb_cam_low" pkg="usb_cam" type="usb_cam_node" output="screen" >

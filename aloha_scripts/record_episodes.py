@@ -104,7 +104,7 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
     torque_on(master_bot_left)
     torque_on(master_bot_right)
     # Open puppet grippers
-    move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)
+    move_grippers([env.puppet_bot_left, env.puppet_bot_right], [0.5] * 2, move_time=0.5)
 
     freq_mean = print_dt_diagnosis(actual_dt_history)
     if freq_mean < 42:

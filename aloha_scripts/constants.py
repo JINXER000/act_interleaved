@@ -1,7 +1,7 @@
 ### Task parameters
 
 
-DATA_DIR = '/home/xuhang/Desktop/aloha_data'
+DATA_DIR = '/ssd1/aloha_data'
 TASK_CONFIGS = {
     'aloha_starbucks':{
         'dataset_dir': DATA_DIR + '/aloha_starbucks',
@@ -17,6 +17,12 @@ TASK_CONFIGS = {
     },
     'aloha_transfer_tape':{
         'dataset_dir': DATA_DIR + '/aloha_transfer_tape',
+        'num_episodes': 50,
+        'episode_len': 500,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+    'cup_random':{
+        'dataset_dir': DATA_DIR + '/cup_random',
         'num_episodes': 50,
         'episode_len': 500,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
