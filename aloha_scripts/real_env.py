@@ -40,7 +40,7 @@ class RealEnv:
                                    "cam_right_wrist": (480x640x3)} # h, w, c, dtype='uint8'
     """
 
-    def __init__(self, init_node, setup_robots=True):
+    def __init__(self, init_node, setup_robots=True, **kwargs):
         self.puppet_bot_left = InterbotixManipulatorXS(robot_model="vx300s", group_name="arm", gripper_name="gripper",
                                                        robot_name=f'puppet_left', init_node=init_node)
         self.puppet_bot_right = InterbotixManipulatorXS(robot_model="vx300s", group_name="arm", gripper_name="gripper",
@@ -50,7 +50,7 @@ class RealEnv:
 
         self.recorder_left = Recorder('left', init_node=False)
         self.recorder_right = Recorder('right', init_node=False)
-        self.image_recorder = ImageRecorder(init_node=False)
+        self.image_recorder = ImageRecorder(init_node=False, **kwargs)
         self.gripper_command = JointSingleCommand(name="gripper")
 
     def setup_robots(self):
@@ -154,8 +154,8 @@ def get_action(master_bot_left, master_bot_right):
     return action
 
 
-def make_real_env(init_node, setup_robots=True):
-    env = RealEnv(init_node, setup_robots)
+def make_real_env(init_node, setup_robots=True, **kwargs):
+    env = RealEnv(init_node, setup_robots, **kwargs)
     return env
 
 

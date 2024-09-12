@@ -146,7 +146,7 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
                                               robot_name=f'master_left', init_node=True)
     master_bot_right = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
                                                robot_name=f'master_right', init_node=False)
-    env = make_real_env(init_node=False, setup_robots=False)
+    env = make_real_env(init_node=False, setup_robots=False, camera_names = camera_names)
 
     # saving dataset
     if not os.path.isdir(dataset_dir):
@@ -252,8 +252,12 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         obs = root.create_group('observations')
         image = obs.create_group('images')
         for cam_name in camera_names:
-            _ = image.create_dataset(cam_name, (max_timesteps, 480, 640, 3), dtype='uint8',
-                                     chunks=(1, 480, 640, 3), )
+            if 'depth' in cam_name:
+                _ = image.create_dataset(cam_name, (max_timesteps, 480, 640), dtype='float32',
+                                         chunks=(1, 480, 640), )
+            else:
+                _ = image.create_dataset(cam_name, (max_timesteps, 480, 640, 3), dtype='uint8',
+                                        chunks=(1, 480, 640, 3), )
             # compression='gzip',compression_opts=2,)
             # compression=32001, compression_opts=(0, 0, 0, 0, 9, 1, 1), shuffle=False)
         _ = obs.create_dataset('qpos', (max_timesteps, 14))
@@ -341,7 +345,7 @@ def debug():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='aloha_transfer_tape', required=False)
-    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=0, required=False)
+    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=101, required=False)
     main(vars(parser.parse_args()))
     # debug()
 

@@ -7,14 +7,14 @@ import IPython
 e = IPython.embed
 
 class ImageRecorder:
-    def __init__(self, init_node=True, is_debug=False):
+    def __init__(self, init_node=True, is_debug=False, camera_names = ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']):
         from collections import deque
         import rospy
         from cv_bridge import CvBridge
         from sensor_msgs.msg import Image
         self.is_debug = is_debug
         self.bridge = CvBridge()
-        self.camera_names = ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+        self.camera_names = camera_names
         if init_node:
             rospy.init_node('image_recorder', anonymous=True)
         for cam_name in self.camera_names:
@@ -29,6 +29,8 @@ class ImageRecorder:
                 callback_func = self.image_cb_cam_left_wrist
             elif cam_name == 'cam_right_wrist':
                 callback_func = self.image_cb_cam_right_wrist
+            elif cam_name == 'high_depth':
+                callback_func = self.image_cb_high_depth
             else:
                 raise NotImplementedError
             rospy.Subscriber(f"/usb_{cam_name}/image_raw", Image, callback_func)
@@ -63,6 +65,10 @@ class ImageRecorder:
         cam_name = 'cam_right_wrist'
         return self.image_cb(cam_name, data)
 
+    def image_cb_high_depth(self, data):
+        cam_name = 'high_depth'
+        return self.image_cb(cam_name, data)
+    
     def get_images(self):
         image_dict = dict()
         for cam_name in self.camera_names:

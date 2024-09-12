@@ -88,6 +88,7 @@
     args="0 0.25 0 0 0 0 /world /$(arg robot_name_puppet_right)/base_link"/>
 
 
+  <remap from="/camera/aligned_depth_to_color/image_raw" to="/usb_high_depth/image_raw" />
   <remap from="/camera/color/image_raw" to="/usb_cam_high/image_raw" />
   <remap from="/camera/color/camera_info" to="/usb_cam_high/camera_info" />
 
