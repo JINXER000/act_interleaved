@@ -14,14 +14,14 @@ from real_env import make_real_env, get_action
 from interbotix_xs_modules.arm import InterbotixManipulatorXS
 
 
-
 from record_episodes import get_auto_index, print_dt_diagnosis,\
     debug
 import sys
 sys.path.append('/home/xuhang/interbotix_ws/src/pddlstream_aloha/')
 
 from examples.pybullet.aloha_real.scripts.ros_openworld_base import openworld_base
-from examples.pybullet.aloha_real.scripts.constants import qpos_to_eetrans, RBT_ID
+from examples.pybullet.aloha_real.scripts.constants import PERCEPT_ARM_POSE, qpos_to_eetrans, RBT_ID
+
 
 import IPython
 e = IPython.embed
@@ -67,7 +67,8 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
                       **kwargs):
 
     # move arms to starting position
-    start_arm_qpos = START_ARM_POSE[:6]
+    # start_arm_qpos = START_ARM_POSE[:6]
+    start_arm_qpos = PERCEPT_ARM_POSE
     move_arms([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [start_arm_qpos] * 4, move_time=1.5)
 
 
@@ -93,8 +94,7 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
 def sense_tabletop(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right,\
                   save_dir = None, sensor_dir = None, estimator = None, **kwargs):
         # before demo, do perception
-    percept_arm_pose = [0, -1.6015, 0.5727, 0.0838,1.7418,0]
-    move_arms([puppet_bot_left, puppet_bot_right], [percept_arm_pose] * 2, move_time=1.5)
+    move_arms([puppet_bot_left, puppet_bot_right], [PERCEPT_ARM_POSE] * 2, move_time=1.5)
     # move grippers to starting position
     move_grippers([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [MASTER_GRIPPER_JOINT_MID, PUPPET_GRIPPER_JOINT_CLOSE] * 2, move_time=0.5)
 
@@ -113,7 +113,7 @@ def sense_tabletop(master_bot_left, master_bot_right, puppet_bot_left, puppet_bo
     camera_intrinsics_file = os.path.join(sensor_dir, 'color_info.json')
 
     color_img = cv2.imread(color_file)
-    depth_img = cv2.imread(depth_file)
+    # depth_img = cv2.imread(depth_file)
     depth_img_mm = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH)
     depth_img = depth_img_mm.astype(np.float32) / 1000.0
     with open(camera_intrinsics_file, 'r') as f:

@@ -21,7 +21,7 @@ from examples.pybullet.aloha_real.openworld_aloha.policy_simp import estimation_
 from examples.pybullet.aloha_real.openworld_aloha.simple_worlds import load_world_0obj
 from examples.pybullet.utils.pybullet_tools.utils import CLIENT, connect
 from examples.pybullet.aloha_real.scripts.ros_openworld_base import openworld_base
-from examples.pybullet.aloha_real.scripts.constants import qpos_to_eetrans, RBT_ID
+from examples.pybullet.aloha_real.scripts.constants import qpos_to_eetrans, RBT_ID, PERCEPT_ARM_POSE
 
 import IPython
 e = IPython.embed
@@ -129,7 +129,7 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
     torque_on(puppet_bot_right)
     torque_on(master_bot_right)
 
-    percept_arm_pose = [0, -1.6015, 0.5727, 0.0838,1.7418,0]
+    percept_arm_pose = PERCEPT_ARM_POSE
     move_arms([puppet_bot_left, puppet_bot_right], [percept_arm_pose] * 2, move_time=1.5)
     # move grippers to starting position
     move_grippers([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [MASTER_GRIPPER_JOINT_MID, PUPPET_GRIPPER_JOINT_CLOSE] * 2, move_time=0.5)
