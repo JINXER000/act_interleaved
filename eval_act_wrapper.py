@@ -34,7 +34,6 @@ from sim_env import BOX_POSE
 import IPython
 e = IPython.embed
 
-import ipdb
 
 import os
 import sys
@@ -44,7 +43,6 @@ import sys
 from aloha.aloha_scripts import constants
 
 import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 
@@ -135,6 +133,9 @@ class ACT_Evaluator(object):
         num_episodes = task_config['num_episodes']
         episode_len = task_config['episode_len']
         camera_names = task_config['camera_names']
+
+        ##NOTE: drop all name containning 'depth' in camera_names
+        camera_names = [name for name in camera_names if 'depth' not in name]
 
         # fixed parameters
         state_dim = 14
