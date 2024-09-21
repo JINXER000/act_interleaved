@@ -12,6 +12,8 @@ from constants import MASTER_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 
+from act_utils import sample_box_pose, sample_insertion_pose # robot functions
+
 import IPython
 e = IPython.embed
 
@@ -36,7 +38,14 @@ def make_sim_env(task_name):
                                         right_gripper_qvel (1)]     # normalized gripper velocity (pos: opening, neg: closing)
                         "images": {"main": (480x640x3)}        # h, w, c, dtype='uint8'
     """
-    if 'sim_transfer_cube' in task_name:
+    if 'sim_insertion_tamp' in task_name:
+        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_insertion.xml')
+        physics = mujoco.Physics.from_xml_path(xml_path)
+        task = TAMPInsertionTask(random=False)
+        env = control.Environment(physics, task, time_limit=50, control_timestep=DT,
+                                  n_sub_steps=None, flat_observation=False)
+
+    elif 'sim_transfer_cube' in task_name:
         xml_path = os.path.join(XML_DIR, f'bimanual_viperx_transfer_cube.xml')
         physics = mujoco.Physics.from_xml_path(xml_path)
         task = TransferCubeTask(random=False)
@@ -48,12 +57,7 @@ def make_sim_env(task_name):
         task = InsertionTask(random=False)
         env = control.Environment(physics, task, time_limit=20, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
-    elif 'sim_tamp_insertion' in task_name:
-        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_insertion.xml')
-        physics = mujoco.Physics.from_xml_path(xml_path)
-        task = TAMPInsertionTask(random=False)
-        env = control.Environment(physics, task, time_limit=40, control_timestep=DT,
-                                  n_sub_steps=None, flat_observation=False)
+
     else:
         raise NotImplementedError
     return env
@@ -137,7 +141,9 @@ class TransferCubeTask(BimanualViperXTask):
         with physics.reset_context():
             physics.named.data.qpos[:16] = START_ARM_POSE
             np.copyto(physics.data.ctrl, START_ARM_POSE)
-            assert BOX_POSE[0] is not None
+            if BOX_POSE[0] is  None:
+                BOX_POSE[0] = sample_box_pose()
+
             physics.named.data.qpos[-7:] = BOX_POSE[0]
             # print(f"{BOX_POSE=}")
         super().initialize_episode(physics)
@@ -187,7 +193,9 @@ class InsertionTask(BimanualViperXTask):
         with physics.reset_context():
             physics.named.data.qpos[:16] = START_ARM_POSE
             np.copyto(physics.data.ctrl, START_ARM_POSE)
-            assert BOX_POSE[0] is not None
+            if BOX_POSE[0] is  None:
+                BOX_POSE[0] = np.concatenate(sample_insertion_pose())
+
             physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
             # print(f"{BOX_POSE=}")
         super().initialize_episode(physics)
@@ -242,7 +250,6 @@ class TAMPInsertionTask(InsertionTask):
         super().__init__(random=random)
         self.max_reward = 4
 
-    
 
 
 

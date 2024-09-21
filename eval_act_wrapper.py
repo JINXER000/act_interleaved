@@ -29,7 +29,7 @@ from act_utils import compute_dict_mean, set_seed, detach_dict # helper function
 from policy import ACTPolicy, CNNMLPPolicy
 from visualize_episodes import save_videos
 
-from sim_env import BOX_POSE
+# from sim_env import BOX_POSE
 
 import IPython
 e = IPython.embed
@@ -191,7 +191,7 @@ class ACT_Evaluator(object):
         self.max_timesteps = self.config['episode_len']
         task_name = self.config['task_name']
         temporal_agg = self.config['temporal_agg']
-        onscreen_cam = 'angle'
+        self.onscreen_cam = 'angle'
 
         # load policy and stats
         ckpt_path = os.path.join(ckpt_dir, ckpt_name)
@@ -228,12 +228,14 @@ class ACT_Evaluator(object):
 
         self.num_queries = policy_config['num_queries']
 
+        if real_robot:
+            self.reset_all()
 
-        self.reset_all()
 
 
-
-    def inference(self):
+    def inference(self, cur_ts = None):
+        if cur_ts is not None:
+            self.ts = cur_ts
         with torch.inference_mode():    
         #     
             ### process previous timestep to get qpos and image_list
@@ -278,11 +280,16 @@ class ACT_Evaluator(object):
 
             self.t += 1
 
-    def reset_all(self, reset_grippers = True):
-        self.ts = self.env.reset(fake=self.with_planning)
-        if reset_grippers:
-            self.env.puppet_bot_left.dxl.robot_reboot_motors("single", "gripper", True)
-            self.env.puppet_bot_right.dxl.robot_reboot_motors("single", "gripper", True)
+        return self.ts
+
+    def reset_all(self, reset_grippers = True, at_start = True):
+        if self.config['real_robot']:
+            self.ts = self.env.reset(fake=self.with_planning)
+            if reset_grippers:
+                self.env.puppet_bot_left.dxl.robot_reboot_motors("single", "gripper", True)
+                self.env.puppet_bot_right.dxl.robot_reboot_motors("single", "gripper", True)
+        elif at_start:  ### at the start of the simulation
+            self.ts = self.env.reset()
         ### evaluation loop
         self.all_time_actions = torch.zeros([self.max_timesteps, self.max_timesteps+self.num_queries, self.state_dim]).cuda()
 
@@ -290,10 +297,31 @@ class ACT_Evaluator(object):
 
 
 if __name__ == '__main__':
+
+    onscreen_render = True
+    verbose = False
     evaluator = ACT_Evaluator(with_planning=False)
+    evaluator.reset_all()
+
+    ### onscreen render
+    if onscreen_render:
+        ax = plt.subplot()
+        plt_img = ax.imshow(evaluator.env._physics.render(height=480, width=640, \
+            camera_id=evaluator.onscreen_cam))
+        plt.ion()
+
     for i in range (evaluator.max_timesteps):
         evaluator.inference()
-        print(f'Step {i} done')
+        ### update onscreen render and wait for DT
+
+        if onscreen_render:
+            image = evaluator.env._physics.render(height=480, width=640, \
+                camera_id=evaluator.onscreen_cam)
+            plt_img.set_data(image)
+        plt.pause(DT)        
+
+        if verbose:
+            print(f'Step {i} done')
 
     evaluator.reset_all()
 

@@ -16,51 +16,16 @@ from constants import PUPPET_GRIPPER_POSITION_OPEN, PUPPET_GRIPPER_POSITION_CLOS
 from act_utils import sample_box_pose, sample_insertion_pose # robot functions
 from sim_env import make_sim_env, BOX_POSE
 
-RBT_ID = {0: "left", 1: "right"}
+from eval_act_wrapper import ACT_Evaluator
 
 NORMALIZED_OPEN = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(PUPPET_GRIPPER_POSITION_OPEN)
 NORMALIZED_CLOSE = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(PUPPET_GRIPPER_POSITION_CLOSE)
 import sys
+CUR_FOLDER = os.getcwd()
 EXE_FOLDER = '/home/user/yzchen_ws/TAMP-ubuntu22/pddlstream_aloha/'
 sys.path.append(EXE_FOLDER)
 from examples.pybullet.aloha_real.openworld_aloha.run_openworld import load_yaml_param, read_pickle, Pose, Euler, Point #, qpos_to_eepose
 from examples.pybullet.utils.pybullet_tools.aloha_primitives import BodyPath, multiply
-
-def qpos_16d_to_14d(qpos_16d):
-    qpos_14d = qpos_16d.copy()
-    qpos_14d = np.delete(qpos_14d, 7)
-    qpos_14d = np.delete(qpos_14d, 14)
-    return qpos_14d
-    
-
-def simulate_tamp_14d(seq, init_obj_states):
-    BOX_POSE[0] = init_obj_states # used in sim reset
-
-    # setup the environment
-    env = make_sim_env('sim_tamp_insertion')
-    ts = env.reset()
-    episode = [ts]
-
-    # setup plotting
-    ax = plt.subplot()
-    plt_img = ax.imshow(ts.observation['images']['angle'])
-    plt.ion()
-
-    # action_seq_14d = convert_action_seq_14d(env, seq, init_obj_states)
-    # visualize_joints(action_seq_14d, plot_path='/home/user/yzchen_ws/TAMP-ubuntu22/ALOHA/act/qpos.png')
-    # for id, action in enumerate(action_seq_14d):
-    for action in iterate_sequence(env, seq, init_obj_states):
-
-        qpos = action[:16]
-        ts = env.step(qpos)
-        episode.append(ts)
-
-        plt_img.set_data(ts.observation['images']['angle'])
-        plt.pause(0.02)
-
-
-
-    plt.close()
 
 
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
@@ -87,7 +52,55 @@ def visualize_joints(qpos_list, plot_path=None, ylim=None, label_overwrite=None)
     print(f'Saved qpos plot to: {plot_path}')
     plt.close()
 
-def iterate_sequence(env, seq, init_obj_states= None):
+
+def qpos_16d_to_14d(qpos_16d):
+    qpos_14d = qpos_16d.copy()
+    qpos_14d = np.delete(qpos_14d, 7)
+    qpos_14d = np.delete(qpos_14d, 14)
+    return qpos_14d
+    
+class Tamp_replayer(ACT_Evaluator):
+    def __init__(self):
+        super().__init__()
+        self.ts = self.env.reset()
+
+    def replay_tamp_step(self, qpos):
+        self.ts = self.env.step(qpos)
+        return self.ts
+
+
+# def simulate_tamp_14d(seq, init_obj_states, env = None):
+#     BOX_POSE[0] = init_obj_states # used in sim reset
+
+#     if env is None:
+#         # setup the environment
+#         env = make_sim_env('sim_insertion_tamp')
+#     ts = env.reset()
+
+#     # setup plotting
+#     ax = plt.subplot()
+#     plt_img = ax.imshow(ts.observation['images']['angle'])
+#     plt.ion()
+
+#     # action_seq_14d = convert_action_seq_14d(env, seq, init_obj_states)
+#     # visualize_joints(action_seq_14d, plot_path='/home/user/yzchen_ws/TAMP-ubuntu22/ALOHA/act/qpos.png')
+#     # for id, action in enumerate(action_seq_14d):
+#     for action in iterate_sequence(seq, init_obj_states):
+
+#         qpos = action[:16]
+#         ts = env.step(qpos)
+
+#         plt_img.set_data(ts.observation['images']['angle'])
+#         plt.pause(0.02)
+
+#     return ts
+
+
+
+
+
+
+def iterate_sequence(seq, init_obj_states= None):
     starting_qpos = qpos_16d_to_14d(START_ARM_POSE)
     action_seq = [starting_qpos]
     # initiually, open the gripper
@@ -125,47 +138,6 @@ def iterate_sequence(env, seq, init_obj_states= None):
 
 
 
-def convert_action_seq_14d(env, seq, init_obj_states=None):
-    starting_qpos = qpos_16d_to_14d(START_ARM_POSE)
-    action_seq = [starting_qpos]
-    # initiually, open the gripper
-    action_seq[0][6] = NORMALIZED_OPEN
-    action_seq[0][-1] = NORMALIZED_OPEN
-    for i, primitive in enumerate(seq.commands):
-        
-        
-        # attach or detach
-        if not hasattr(primitive, 'path'):
-            continue
-
-        if hasattr(primitive, 'refined_qpos'):
-            path_to_execute = primitive.refined_qpos
-        else:
-            path_to_execute = primitive.path
-
-        # debug_plot(path_to_execute, joint_id = 0)
-
-        for cfg in path_to_execute:
-            cur_conf_14d = action_seq[-1]
-            next_conf_14d = cur_conf_14d.copy()
-            
-            if primitive.group == "left_arm":
-                next_conf_14d[0:6] = cfg[0:6]
-
-            elif primitive.group == "right_arm":
-                next_conf_14d[7:7+6] = cfg[0:6]
-
-            elif primitive.group == "left_gripper":
-                next_conf_14d[6] = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(cfg[0])
-            elif primitive.group == "right_gripper":
-                next_conf_14d[-1] = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(cfg[0])
-
-            action_seq.append(next_conf_14d)
-    return action_seq
-
-
-
-
 
 
 def get_box_poses(obj_info_ls):
@@ -184,6 +156,13 @@ def get_box_poses(obj_info_ls):
     return init_obj_states
     
     
+def call_act(act_evaluator, ts):
+    act_evaluator.reset_all(reset_grippers = False, at_start=False)
+    for i in range(act_evaluator.max_timesteps):
+        ts = act_evaluator.inference(ts)
+
+
+
 if __name__ == "__main__":
     CFG_PATH = os.path.join(EXE_FOLDER, 'config/aloha_scene.yaml')
     # load param from yaml
@@ -193,5 +172,32 @@ if __name__ == "__main__":
     seq = read_pickle(pkl_path)
 
     init_obj_states = get_box_poses(obj_info_ls)
+    BOX_POSE[0] = init_obj_states # used in sim reset
 
-    simulate_tamp_14d(seq, init_obj_states)
+    os.chdir(CUR_FOLDER)
+
+    act_evaluator = Tamp_replayer()
+    ts = act_evaluator.ts
+
+    # setup plotting
+    ax = plt.subplot()
+    plt_img = ax.imshow(ts.observation['images']['angle'])
+    plt.ion()
+
+    for tamp_id, action in enumerate(iterate_sequence(seq, init_obj_states)):
+
+        qpos = action[:16]
+        ts = act_evaluator.replay_tamp_step(qpos)
+
+        plt_img.set_data(ts.observation['images']['angle'])
+        plt.pause(DT)
+
+    act_evaluator.reset_all(reset_grippers = False, at_start=False)
+    for i in range(tamp_id, act_evaluator.max_timesteps):
+        ts = act_evaluator.inference()
+
+        plt_img.set_data(ts.observation['images']['angle'])
+        plt.pause(DT)
+
+
+    plt.ioff()

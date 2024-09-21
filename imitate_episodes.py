@@ -20,8 +20,7 @@ from tqdm import tqdm
 from einops import rearrange
 import time
 
-from constants import DT
-from constants import PUPPET_GRIPPER_JOINT_OPEN
+from constants import DT, PUPPET_GRIPPER_JOINT_OPEN
 from act_utils import load_data # data functions
 from act_utils import sample_box_pose, sample_insertion_pose # robot functions
 from act_utils import compute_dict_mean, set_seed, detach_dict # helper functions
