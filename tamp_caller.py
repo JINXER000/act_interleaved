@@ -13,7 +13,8 @@ from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_OPEN, PUPPET_GRIPPER_POSITION_CLOSE
 
-from act_utils import sample_box_pose, sample_insertion_pose # robot functions
+from act_utils import sample_box_pose, sample_insertion_pose,\
+     plt_render # robot functions
 from sim_env import make_sim_env, BOX_POSE
 
 from eval_act_wrapper import ACT_Evaluator
@@ -179,25 +180,26 @@ if __name__ == "__main__":
     act_evaluator = Tamp_replayer()
     ts = act_evaluator.ts
 
+    # ### debug: generate scene point clouds
+    # act_evaluator.env.task.generate_scene_point_clouds(act_evaluator.env.physics)
+
     # setup plotting
-    ax = plt.subplot()
-    plt_img = ax.imshow(ts.observation['images']['angle'])
-    plt.ion()
+    plotter = plt_render(ts, dt=DT, img_type='rgb', cam_name='angle')
+    # plotter = plt_render(ts, dt=DT, img_type='depth', cam_name='top')
+    # plotter = plt_render(ts, dt=DT, img_type='seg', cam_name='top', env=act_evaluator.env)
 
     for tamp_id, action in enumerate(iterate_sequence(seq, init_obj_states)):
 
         qpos = action[:16]
         ts = act_evaluator.replay_tamp_step(qpos)
 
-        plt_img.set_data(ts.observation['images']['angle'])
-        plt.pause(DT)
+        plotter.update(ts)
 
     act_evaluator.reset_all(reset_grippers = False, at_start=False)
     for i in range(tamp_id, act_evaluator.max_timesteps):
         ts = act_evaluator.inference()
 
-        plt_img.set_data(ts.observation['images']['angle'])
-        plt.pause(DT)
+        plotter.update(ts)
 
 
     plt.ioff()

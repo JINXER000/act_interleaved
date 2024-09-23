@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from dm_control import mujoco
 from dm_control.rl import control
 from dm_control.suite import base
+from dm_control.mujoco.wrapper.mjbindings import mjlib
 
 from constants import DT, XML_DIR, START_ARM_POSE
 from constants import PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN
@@ -12,8 +13,9 @@ from constants import MASTER_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 
-from act_utils import sample_box_pose, sample_insertion_pose # robot functions
-
+from act_utils import sample_box_pose, sample_insertion_pose, \
+    get_geom_ids, rgbd_to_pointcloud, resize_point_cloud
+import math
 import IPython
 e = IPython.embed
 
@@ -245,12 +247,194 @@ class InsertionTask(BimanualViperXTask):
         return reward
 
 
+
 class TAMPInsertionTask(InsertionTask):
     def __init__(self, random=None):
         super().__init__(random=random)
-        self.max_reward = 4
+        self.obs_idx = 0
+        self.recorded_pc = False
+
+    #https://github.com/google-deepmind/mujoco/issues/1863
+    def generate_scene_point_clouds(self, physics):
+        # Simulate for 10 seconds and capture RGB-D images at fps Hz.
+        xyzrgbs: list[np.ndarray] = []
+        model = physics.model.ptr
+        data = physics.data.ptr
+        # mujoco.mj_forward(model, data)
+        physics.forward()
+        # mujoco.mj_resetData(model, data)
+        physics.reset()
+        while data.time < 10:
+            # mujoco.mj_step(model, data)
+            physics.step()
+            rgb = physics.render(height=480, width=640, camera_id='top')
+            depth = physics.render(height=480, width=640, camera_id='top', depth=True)
+            cam_intrinsics = self.get_cam_intrinsics(physics, 'top')
+            cam_extrinsics = self.get_cam_extrinsics(physics, 'top')
+            xyzrgb = rgbd_to_pointcloud(rgb, depth, cam_intrinsics, cam_extrinsics)
+            xyzrgbs.append(xyzrgb)
+
+        # Visualize in open3d.
+        import open3d as o3d
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(xyzrgbs[0][:, :3])
+        pcd.colors = o3d.utility.Vector3dVector(xyzrgbs[0][:, 3:])
+        vis.add_geometry(pcd)
+        frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6)
+        vis.add_geometry(frame)
+
+        counter: int = 1
+
+        def update_pc(vis):
+            global counter
+            if counter < len(xyzrgbs) - 1:
+                pcd.points = o3d.utility.Vector3dVector(xyzrgbs[counter][:, :3])
+                pcd.colors = o3d.utility.Vector3dVector(xyzrgbs[counter][:, 3:])
+                vis.update_geometry(pcd)
+                counter += 1
+
+        vis.register_animation_callback(update_pc)
+        vis.run()
+        vis.destroy_window()
+
+    def vis_frame_pc(self, obs):
+        xyzrgb, xyz_cam = rgbd_to_pointcloud(obs['images']['top'], obs['depth']['top'], \
+            cam_intrinsics, cam_extrinsics)
+        import open3d as o3d
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(xyzrgb[:, :3])
+        pcd.colors = o3d.utility.Vector3dVector(xyzrgb[:, 3:])
+        # pcd.points = o3d.utility.Vector3dVector(xyz_cam)
+        vis.add_geometry(pcd)
+        frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6)
+        vis.add_geometry(frame)
+        vis.run()
+        vis.destroy_window()
 
 
+    def get_observation(self, physics):
+        self.obs_idx += 1
+
+        obs = super().get_observation(physics)
+
+        obs['depth'] = dict()
+        obs['depth']['top'] = physics.render(height=480, width=640, camera_id='top', depth=True)
+        obs['seg'] = dict()
+        raw_seg= physics.render(height=480, width=640, camera_id='top', segmentation=True)
+        processed_seg = raw_seg[:, :, 0].astype(np.uint8) 
+        obs['seg']['top'] = processed_seg+ 1  # for visualization
+
+
+        if not self.recorded_pc and self.obs_idx == 10:
+            peg_mask = self.get_mask('peg', physics, processed_seg)
+            socket_mask = self.get_mask('socket', physics, processed_seg)
+
+            cam_intrinsics = self.get_cam_intrinsics(physics, 'top')
+            cam_extrinsics = self.get_cam_extrinsics(physics, 'top')
+
+            socket_pc = self.get_pc_with_mask(socket_mask, cam_intrinsics, cam_extrinsics, \
+                obs['depth']['top'], obs['images']['top'])
+            peg_pc = self.get_pc_with_mask(peg_mask, cam_intrinsics, cam_extrinsics, \
+                obs['depth']['top'], obs['images']['top'])
+
+            
+            obs['socket_pc'] = dict()
+            obs['socket_pc']['top'] = socket_pc
+            obs['peg_pc'] = dict()
+            obs['peg_pc']['top'] = peg_pc
+
+            self.recorded_pc = True
+        return obs
+
+    def get_mask(self, obj_name, physics, raw_seg):
+        obj_ids = get_geom_ids(physics, obj_name)
+        obj_mask = np.isin(raw_seg, obj_ids)
+        return obj_mask
+
+    #https://github.com/google-deepmind/dm_control/issues/85
+    ## https://github.com/openai/mujoco-py/issues/271
+    def get_cam_intrinsics(self, physics, cam_name):
+        camera = mujoco.Camera(physics, camera_id=cam_name)
+        camera.update()
+
+        height, width = 480, 640
+        fovy = physics.model.cam_fovy[physics.model.name2id("top", "camera")]
+        # f =  0.5 * height / math.tan(0.5*math.radians(fovy))
+        # intrinsic_matrix = np.array([[f, 0, width / 2], [0, f, height / 2], [0, 0, 1]])
+        
+        theta = math.radians(fovy)
+        fx = width / 2 / np.tan(theta / 2)
+        fy = height / 2 / np.tan(theta / 2)
+        cx = (width-1) / 2.0
+        cy = (height-1) / 2.0
+        intrinsic_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+
+        return intrinsic_matrix
+
+    # https://simulately.wiki/docs/snippets/mujoco/camera/
+    def get_cam_extrinsics(self, physics, cam_name):
+        camera_id = physics.model.name2id(cam_name, "camera")
+        rot = physics.data.cam_xmat[camera_id].reshape(3, 3)
+
+        ## in mujoco, z points front and x points right
+        R_camera_to_world = np.array([
+            [1, 0, 0],
+            [0, -1, 0],
+            [0, 0, -1]
+        ])
+        rot = np.dot(R_camera_to_world, rot)
+        pos = physics.data.cam_xpos[camera_id]
+        translation = np.eye(4)
+        translation[:3, :3] = rot
+        translation[:3, 3] = pos
+        return translation
+
+    def get_pc_with_mask(self, seg_mask, cam_intrinsics, cam_extrinsics,  \
+        depth, color, save_ply = False, target_size = 256):
+        # mask_pixels=  np.argwhere(seg_mask)
+        # depth_values = depth[mask_pixels[:, 0], mask_pixels[:, 1]]
+        
+
+        # fx, fy, cx, cy = cam_intrinsics[0, 0], cam_intrinsics[1, 1], cam_intrinsics[0, 2], cam_intrinsics[1, 2]
+        # x_cam = (mask_pixels[:, 1] - cx) * depth_values / fx
+        # y_cam = (mask_pixels[:, 0] - cy) * depth_values / fy
+        # z_cam = depth_values
+        # points_camera = np.vstack([x_cam, y_cam, z_cam, np.ones_like(z_cam)]) ## should be 4*N
+        # assert points_camera.shape[0] == 4
+
+        xyzrgb, xyz_cam = rgbd_to_pointcloud(color, depth, \
+            cam_intrinsics, cam_extrinsics, seg_mask=seg_mask)
+
+        ## downsample to target_size
+        xyz_selected = resize_point_cloud(xyzrgb[:, :3], target_size)
+
+       ### save the point cloud
+        if save_ply:
+            # points_camera_n3 = points_camera[:3, :]
+            points_camera_n3 = xyz_cam.T
+            import open3d as o3d
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points_camera_n3.T)
+            o3d.io.write_point_cloud("mujoco_camera.ply", pcd)
+
+            # points_world = np.dot(cam_extrinsics, points_camera)
+            # points_world = points_world[:3, :]
+            points_world = xyzrgb[:, :3].T
+
+            ### save the point cloud
+            import open3d as o3d
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points_world.T )
+            o3d.io.write_point_cloud("mujoco_world.ply", pcd)
+
+        return xyz_selected
+
+
+        
 
 
 def get_action(master_bot_left, master_bot_right):

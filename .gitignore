@@ -3,3 +3,5 @@ ckpt_dir
 data_training
 ckpt
 dataset
+*.png
+*.ply

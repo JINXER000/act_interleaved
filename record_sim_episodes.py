@@ -34,11 +34,15 @@ def main(args):
         os.makedirs(dataset_dir, exist_ok=True)
 
     episode_len = SIM_TASK_CONFIGS[task_name]['episode_len']
+        
     camera_names = SIM_TASK_CONFIGS[task_name]['camera_names']
     if task_name == 'sim_transfer_cube_scripted':
         policy_cls = PickAndTransferPolicy
     elif task_name == 'sim_insertion_scripted':
         policy_cls = InsertionPolicy
+    elif task_name == 'sim_insertion_tamp':
+        policy_cls = InsertionPolicy
+        episode_len = SIM_TASK_CONFIGS['sim_insertion_scripted']['episode_len']
     else:
         raise NotImplementedError
 
@@ -138,6 +142,10 @@ def main(args):
         for cam_name in camera_names:
             data_dict[f'/observations/images/{cam_name}'] = []
 
+            if task_name == 'sim_insertion_tamp':
+                data_dict[f'/observations/socket_pc/{cam_name}'] = []
+                data_dict[f'/observations/peg_pc/{cam_name}'] = []
+
         # because the replaying, there will be eps_len + 1 actions and eps_len + 2 timesteps
         # truncate here to be consistent
         joint_traj = joint_traj[:-1]
@@ -155,6 +163,12 @@ def main(args):
             for cam_name in camera_names:
                 data_dict[f'/observations/images/{cam_name}'].append(ts.observation['images'][cam_name])
 
+                if task_name == 'sim_insertion_tamp':
+                    if 'socket_pc' in ts.observation:
+                        data_dict[f'/observations/socket_pc/{cam_name}'].append(ts.observation['socket_pc'][cam_name])
+                    if 'peg_pc' in ts.observation:
+                        data_dict[f'/observations/peg_pc/{cam_name}'].append(ts.observation['peg_pc'][cam_name])
+
         # HDF5
         t0 = time.time()
         dataset_path = os.path.join(dataset_dir, f'episode_{episode_idx}')
@@ -165,14 +179,37 @@ def main(args):
             for cam_name in camera_names:
                 _ = image.create_dataset(cam_name, (max_timesteps, 480, 640, 3), dtype='uint8',
                                          chunks=(1, 480, 640, 3), )
+
             # compression='gzip',compression_opts=2,)
             # compression=32001, compression_opts=(0, 0, 0, 0, 9, 1, 1), shuffle=False)
             qpos = obs.create_dataset('qpos', (max_timesteps, 14))
             qvel = obs.create_dataset('qvel', (max_timesteps, 14))
             action = root.create_dataset('action', (max_timesteps, 14))
 
+            ## only save the first point cloud received
+            if task_name == 'sim_insertion_tamp':
+                socket_pc = obs.create_group('socket_pc')
+                peg_pc = obs.create_group('peg_pc')
+                for cam_name in camera_names:
+                
+                    socket_pc.create_dataset(cam_name, (1, 256, 3), dtype='float32')
+                    peg_pc.create_dataset(cam_name, (1, 256, 3), dtype='float32')
+
+
             for name, array in data_dict.items():
                 root[name][...] = array
+
+            # if task_name == 'sim_insertion_tamp':
+            #     socket_pc = obs.create_group('socket_pc')
+            #     peg_pc = obs.create_group('peg_pc')
+            #     for cam_name in camera_names:
+                
+            #         socket_pc.create_dataset(cam_name, (1, 256), dtype='float32')
+            #         peg_pc.create_dataset(cam_name, (1, 256), dtype='float32')
+
+            #         root['socket_pc'][cam_name] = data_dict[f'/observations/socket_pc/{cam_name}']
+            #         root['peg_pc'][cam_name] = data_dict[f'/observations/peg_pc/{cam_name}']
+
         print(f'Saving: {time.time() - t0:.1f} secs\n')
 
     print(f'Saved to {dataset_dir}')

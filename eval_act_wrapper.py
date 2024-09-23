@@ -233,9 +233,7 @@ class ACT_Evaluator(object):
 
 
 
-    def inference(self, cur_ts = None):
-        if cur_ts is not None:
-            self.ts = cur_ts
+    def inference(self):
         with torch.inference_mode():    
         #     
             ### process previous timestep to get qpos and image_list
