@@ -17,9 +17,10 @@ TASK_CONFIGS = {
     },
     'aloha_transfer_tape':{
         'dataset_dir': DATA_DIR + '/aloha_transfer_tape',
-        'num_episodes': 50,
+        'num_episodes': 30,
         'episode_len': 500,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist', 'high_depth']
+        # 'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist', 'high_depth']
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
     'cup_random':{
         'dataset_dir': DATA_DIR + '/cup_random',
@@ -27,6 +28,25 @@ TASK_CONFIGS = {
         'episode_len': 500,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
+    'screwdriver':{
+        'dataset_dir': DATA_DIR + '/screwdriver',
+        'num_episodes': 50,
+        'episode_len': 800,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+    'screwdriver_random':{
+        'dataset_dir': DATA_DIR + '/screwdriver_random',
+        'num_episodes': 50,
+        'episode_len': 800,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+        'fold':{
+        'dataset_dir': DATA_DIR + '/fold',
+        'num_episodes': 50,
+        'episode_len': 1000,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+
 }
 
 # DATA_DIR = '/home/xuhang/Desktop/aloha_data'

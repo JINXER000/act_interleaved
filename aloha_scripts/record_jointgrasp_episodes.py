@@ -20,7 +20,7 @@ import sys
 sys.path.append('/home/xuhang/interbotix_ws/src/pddlstream_aloha/')
 
 from examples.pybullet.aloha_real.scripts.ros_openworld_base import openworld_base
-from examples.pybullet.aloha_real.scripts.constants import PERCEPT_ARM_POSE, qpos_to_eetrans, RBT_ID
+from examples.pybullet.aloha_real.scripts.aloha_tamp_constants import PERCEPT_ARM_POSE, qpos_to_eetrans, RBT_ID
 
 
 import IPython
@@ -67,8 +67,8 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
                       **kwargs):
 
     # move arms to starting position
-    # start_arm_qpos = START_ARM_POSE[:6]
-    start_arm_qpos = PERCEPT_ARM_POSE
+    start_arm_qpos = START_ARM_POSE[:6]
+    # start_arm_qpos = PERCEPT_ARM_POSE
     move_arms([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [start_arm_qpos] * 4, move_time=1.5)
 
 
@@ -91,54 +91,45 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
     print(f'Started!')
 
 
-def sense_tabletop(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right,\
-                  save_dir = None, sensor_dir = None, estimator = None, **kwargs):
+def sense_tabletop(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right, cam_dir_mapping = None):
         # before demo, do perception
     move_arms([puppet_bot_left, puppet_bot_right], [PERCEPT_ARM_POSE] * 2, move_time=1.5)
     # move grippers to starting position
     move_grippers([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [MASTER_GRIPPER_JOINT_MID, PUPPET_GRIPPER_JOINT_CLOSE] * 2, move_time=0.5)
 
-    if not os.path.isdir(sensor_dir):
-        os.makedirs(sensor_dir)
+    for k, v in cam_dir_mapping.items():
+        if not os.path.exists(v):
+            os.makedirs(v)
 
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
 
     acting_base = openworld_base({}, only_perception = True)
-    acting_base.obtain_sensor_data(sensor_dir)
+    acting_base.obtain_sensor_data(cam_dir_mapping)
 
-    # read sensor data
-    depth_file = os.path.join(sensor_dir, 'depth_image.png')
-    color_file = os.path.join(sensor_dir, 'color_image.png')
-    camera_intrinsics_file = os.path.join(sensor_dir, 'color_info.json')
-
-    color_img = cv2.imread(color_file)
-    # depth_img = cv2.imread(depth_file)
-    depth_img_mm = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH)
-    depth_img = depth_img_mm.astype(np.float32) / 1000.0
-    with open(camera_intrinsics_file, 'r') as f:
-        camera_info_color = json.load(f)
-
-    return color_img, depth_img, camera_info_color
-
-
-
-    # if estimator is None:
-    #     connect(use_gui=True)
-    #     robot_body, names, movable_bodies, stackable_bodies = load_world_0obj()
-    #     estimator = estimation_policy(robot_body, img_src = 'real', \
-    #                                 file_path=sensor_dir,  teleport=False, client=CLIENT)
+    color_imgs = {}
+    depth_imgs = {}
+    camera_infos = {}
+    
+    for k, v in cam_dir_mapping.items():
+        color_file = os.path.join(v, 'color_image.png')
+        color_img = cv2.imread(color_file)
+        color_imgs[k] = color_img
         
-    #     # belief = estimator.estimate_state(graspdata_dir = save_dir, episode_idx = episode_idx)
-    # belief = estimator.estimate_state()
-    # tgt_obj = belief.estimated_objects[0]
+        depth_file = os.path.join(v, 'depth_image.png')
+        depth_img_mm = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH)
+        depth_img = depth_img_mm.astype(np.float32) / 1000.0
+        depth_imgs[k] = depth_img
 
-    # return tgt_obj, estimator
+        camera_intrinsics_file = os.path.join(v, 'color_info.json')
+        with open(camera_intrinsics_file, 'r') as f:
+            camera_info_color = json.load(f)
+        camera_infos[k] = camera_info_color
+
+    return color_imgs, depth_imgs, camera_infos
 
 
 
-def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_name, overwrite,\
-                         **kwargs):
+
+def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_name, overwrite, cam_dir_mapping = None, **kwargs):
     print(f'Dataset name: {dataset_name}')
 
     # source of data
@@ -159,7 +150,7 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
     initialize_bots(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right, **kwargs)
    
     # do perception, record the point cloud and the mesh
-    start_color_img, start_depth_img, camera_info = sense_tabletop(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right, **kwargs)
+    start_color_imgs, start_depth_imgs, camera_infos = sense_tabletop(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right, cam_dir_mapping = cam_dir_mapping)
     
 
     opening_ceremony(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right)
@@ -190,13 +181,7 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
     move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)
 
     # do perception again for final grasp detection
-    end_color_img, end_depth_img, _ = sense_tabletop(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right, **kwargs)
-
-
-
-    # # postprocess recorded values to obtain the contact switch
-    # obj_poses = [start_obj.observed_pose[0], end_obj.observed_pose[0]]
-    # l_grasp_ids, l_release_ids, r_grasp_ids, r_release_ids = actions2grasps(np.array(actions), obj_poses, plot = True)
+    end_color_imgs, end_depth_imgs, _ = sense_tabletop(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right, cam_dir_mapping = cam_dir_mapping)
 
 
     freq_mean = print_dt_diagnosis(actual_dt_history)
@@ -222,9 +207,6 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         '/observations/qvel': [],
         '/observations/effort': [],
         '/action': [],
-        '/color_img': [],
-        '/depth_img': [],
-        # '/camera_K': []
     }
     for cam_name in camera_names:
         data_dict[f'/observations/images/{cam_name}'] = []
@@ -240,10 +222,11 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         for cam_name in camera_names:
             data_dict[f'/observations/images/{cam_name}'].append(ts.observation['images'][cam_name])
 
-    data_dict['/color_img'] = [start_color_img, end_color_img]
-    data_dict['/depth_img'] = [start_depth_img, end_depth_img]
-    # data_dict['/camera_info'] = camera_info
-    # data_dict['/camera_K'] = camera_info['K']
+    # data_dict['/color_img'] = [start_color_img, end_color_img]
+    # data_dict['/depth_img'] = [start_depth_img, end_depth_img]
+    for rs_cam in cam_dir_mapping.keys():
+        data_dict[f'/color_img_{rs_cam}'] = [start_color_imgs[rs_cam], end_color_imgs[rs_cam]]
+        data_dict[f'/depth_img_{rs_cam}'] = [start_depth_imgs[rs_cam], end_depth_imgs[rs_cam]]
 
     # HDF5
     t0 = time.time()
@@ -265,19 +248,21 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         _ = obs.create_dataset('effort', (max_timesteps, 14))
         _ = root.create_dataset('action', (max_timesteps, 14))
 
-        # TODO: below error. Try only save depth images and camera intrinsicss into hdf5. 
-        # objects = root.create_group('objects')
-        # _ = objects.create_dataset('start_obj', data = start_obj)
-        # _ = objects.create_dataset('end_obj', data = end_obj)
 
-        _ = root.create_dataset('color_img', (2, 480, 640, 3), dtype='uint8')
-        _ = root.create_dataset('depth_img', (2, 480, 640), dtype='float32')
+        # _ = root.create_dataset('color_img', (2, 480, 640, 3), dtype='uint8')
+        # _ = root.create_dataset('depth_img', (2, 480, 640), dtype='float32')
         # _ = root.create_dataset('camera_K', (1, 9), dtype='float32')
+        
+        for rs_cam in cam_dir_mapping.keys():
+            _ = root.create_dataset(f'color_img_{rs_cam}', (2, 480, 640, 3), dtype='uint8')
+            _ = root.create_dataset(f'depth_img_{rs_cam}', (2, 480, 640), dtype='float32')
 
         for name, array in data_dict.items():
             root[name][...] = array
 
-        _ = root.create_dataset('camera_info', data = json.dumps(camera_info))
+        # _ = root.create_dataset('camera_info', data = json.dumps(camera_info))
+        for rs_cam in cam_dir_mapping.keys():
+            _ = root.create_dataset(f'camera_info_{rs_cam}', data = json.dumps(camera_infos[rs_cam]))
 
     print(f'Saving: {time.time() - t0:.1f} secs')
 
@@ -299,13 +284,14 @@ def main(args):
     dataset_name = f'episode_{episode_idx}'
     print(dataset_name + '\n')
 
-    sensor_dir = '/home/xuhang/interbotix_ws/src/pddlstream_aloha/examples/pybullet/aloha_real/openworld_aloha/estimation/temp_vis/realrobot'
-    save_dir = '/home/xuhang/interbotix_ws/src/ACT/aloha/depth_data/'+ args['task_name'] 
-    
+    save_dir = '/home/xuhang/interbotix_ws/src/pddlstream_aloha/examples/pybullet/aloha_real/openworld_aloha/estimation/temp_vis/realrobot'
+    back_save_dir = save_dir.replace('realrobot', 'back_realrobot')
+    cam_dir_mapping = {'camera_2': save_dir, 'camera_1': back_save_dir}
+    # cam_dir_mapping = {'camera_2': save_dir}
     while True:
         is_healthy = capture_one_episode(DT, max_timesteps, camera_names, dataset_dir, dataset_name, overwrite,\
                                          task_name = args['task_name'], episode_idx = args['episode_idx'],
-                                         sensor_dir = sensor_dir, save_dir = save_dir, only_npz=True)
+                                         cam_dir_mapping = cam_dir_mapping)
         if is_healthy:
             break
 
@@ -345,7 +331,7 @@ def debug():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='aloha_transfer_tape', required=False)
-    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=101, required=False)
+    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=0, required=False)
     main(vars(parser.parse_args()))
     # debug()
 
