@@ -19,6 +19,7 @@
   <arg name="robot_name_master_right"           value="master_right"/>
   <arg name="robot_name_puppet_right"           value="puppet_right"/>
 
+  <arg name="filters"                           default="decimation,temporal"/>
 
   <include if="$(arg launch_driver)" file="$(find interbotix_xsarm_control)/launch/xsarm_control.launch">
     <arg name="robot_model"                       value="$(arg robot_model_master)"/>
@@ -88,13 +89,21 @@
     args="0 0.25 0 0 0 0 /world /$(arg robot_name_puppet_right)/base_link"/>
 
 
-  <remap from="/camera/aligned_depth_to_color/image_raw" to="/usb_high_depth/image_raw" />
+  <!-- <remap from="/camera/aligned_depth_to_color/image_raw" to="/usb_high_depth/image_raw" />
   <remap from="/camera/color/image_raw" to="/usb_cam_high/image_raw" />
   <remap from="/camera/color/camera_info" to="/usb_cam_high/camera_info" />
 
   <include  file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
     <param name="tf_prefix" value="measured/camera" />
-  </include>
+  </include> -->
+
+  <!-- <remap from="/camera_1/aligned_depth_to_color/image_raw" to="/usb_high_depth/image_raw" />
+  <remap from="/camera_1/color/image_raw" to="/usb_cam_high/image_raw" />
+  <remap from="/camera_1/color/camera_info" to="/usb_cam_high/camera_info" /> -->
+
+  <!-- <include  file="$(find realsense2_camera)/launch/rs_2cam_aligned_depth.launch">
+  </include> -->
+
 
   <node name="usb_cam_low" pkg="usb_cam" type="usb_cam_node" output="screen" >
     <param name="video_device" value="/dev/CAM_LOW" />
@@ -135,6 +144,19 @@
     <param name="autoexposure" value="true"/>
   </node>
 
+<!-- topic remapper -->
+  <node pkg="aloha" type="cam_remapper.py" name="cam_remapper" output="screen">
+    <param name="use_sim_time" value="false" />
+  </node>
+
+  <!-- <include  file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
+  </include> -->
+
+<!-- launch 2 realsense cameras -->
+<!-- location: /opt/ros/noetic/share/realsense2_camera/launch/rs_2cam_aligned_depth.launch -->
+  <include  file="$(find realsense2_camera)/launch/rs_2cam_aligned_depth.launch">
+  <param name="filters" value="$(arg filters)" />
+  </include>
 
 
 </launch>
