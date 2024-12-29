@@ -37,7 +37,7 @@ TASK_CONFIGS = {
     'screwdriver_random':{
         'dataset_dir': DATA_DIR + '/screwdriver_random',
         'num_episodes': 50,
-        'episode_len': 800,
+        'episode_len': 750,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
         'fold':{
@@ -46,7 +46,12 @@ TASK_CONFIGS = {
         'episode_len': 1000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-
+    'hang_pants':{
+        'dataset_dir': DATA_DIR + '/hang_pants',
+        'num_episodes': 50,
+        'episode_len': 1000,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
 }
 
 # DATA_DIR = '/home/xuhang/Desktop/aloha_data'
