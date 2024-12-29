@@ -13,6 +13,7 @@ from constants import MASTER_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 
+
 from act_utils import sample_box_pose, sample_insertion_pose, \
     get_geom_ids, rgbd_to_pointcloud, resize_point_cloud
 import math
@@ -22,7 +23,7 @@ e = IPython.embed
 BOX_POSE = [None] # to be changed from outside
 INIT_ARM_POSE = [None] # to be changed from outside
 
-def make_sim_env(task_name):
+def make_sim_env(task_name, init_obj_states_arr = None):
     """
     Environment for simulated robot bi-manual manipulation, with joint position control
     Action space:      [left_arm_qpos (6),             # absolute joint position
@@ -43,7 +44,7 @@ def make_sim_env(task_name):
     if 'sim_insertion_tamp' in task_name:
         xml_path = os.path.join(XML_DIR, f'bimanual_viperx_insertion.xml')
         physics = mujoco.Physics.from_xml_path(xml_path)
-        task = TAMPInsertionTask(random=False)
+        task = TAMPInsertionTask(random=False, init_obj_states_arr=init_obj_states_arr)
         env = control.Environment(physics, task, time_limit=50, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
 
@@ -123,6 +124,7 @@ class BimanualViperXTask(base.Task):
         obs['images']['top'] = physics.render(height=480, width=640, camera_id='top')
         obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')
         obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')
+        obs['images']['back'] = physics.render(height=480, width=640, camera_id='back')
 
         return obs
 
@@ -249,105 +251,140 @@ class InsertionTask(BimanualViperXTask):
 
 
 class TAMPInsertionTask(InsertionTask):
-    def __init__(self, random=None):
+    def __init__(self, random=None, init_obj_states_arr = None):
         super().__init__(random=random)
         self.obs_idx = 0
         self.recorded_pc = False
+        self.init_obj_states_arr = init_obj_states_arr
 
-    #https://github.com/google-deepmind/mujoco/issues/1863
-    def generate_scene_point_clouds(self, physics):
-        # Simulate for 10 seconds and capture RGB-D images at fps Hz.
-        xyzrgbs: list[np.ndarray] = []
-        model = physics.model.ptr
-        data = physics.data.ptr
-        # mujoco.mj_forward(model, data)
-        physics.forward()
-        # mujoco.mj_resetData(model, data)
-        physics.reset()
-        while data.time < 10:
-            # mujoco.mj_step(model, data)
-            physics.step()
-            rgb = physics.render(height=480, width=640, camera_id='top')
-            depth = physics.render(height=480, width=640, camera_id='top', depth=True)
-            cam_intrinsics = self.get_cam_intrinsics(physics, 'top')
-            cam_extrinsics = self.get_cam_extrinsics(physics, 'top')
-            xyzrgb = rgbd_to_pointcloud(rgb, depth, cam_intrinsics, cam_extrinsics)
-            xyzrgbs.append(xyzrgb)
+    def initialize_episode(self, physics):
+        """Sets the state of the environment at the start of each episode."""
+        # TODO Notice: this function does not randomize the env configuration. Instead, set BOX_POSE from outside
+        # reset qpos, control and box position
+        with physics.reset_context():
+            physics.named.data.qpos[:16] = START_ARM_POSE
+            np.copyto(physics.data.ctrl, START_ARM_POSE)
 
-        # Visualize in open3d.
+            if BOX_POSE[0] is  None:
+                    if self.init_obj_states_arr is not None:
+                        BOX_POSE[0] = self.init_obj_states_arr
+                    else:
+                        BOX_POSE[0] = np.concatenate(sample_insertion_pose())
+
+            print('initial obj poses:', BOX_POSE[0])
+
+            physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
+            # print(f"{BOX_POSE=}")
+        super().initialize_episode(physics)
+
+    # #https://github.com/google-deepmind/mujoco/issues/1863
+    # def generate_scene_point_clouds(self, physics):
+    #     # Simulate for 10 seconds and capture RGB-D images at fps Hz.
+    #     xyzrgbs: list[np.ndarray] = []
+    #     model = physics.model.ptr
+    #     data = physics.data.ptr
+    #     # mujoco.mj_forward(model, data)
+    #     physics.forward()
+    #     # mujoco.mj_resetData(model, data)
+    #     physics.reset()
+    #     while data.time < 10:
+    #         # mujoco.mj_step(model, data)
+    #         physics.step()
+    #         rgb = physics.render(height=480, width=640, camera_id='top')
+    #         depth = physics.render(height=480, width=640, camera_id='top', depth=True)
+    #         cam_intrinsics = self.get_cam_intrinsics(physics, 'top')
+    #         cam_extrinsics = self.get_cam_extrinsics(physics, 'top')
+    #         xyzrgb = rgbd_to_pointcloud(rgb, depth, cam_intrinsics, cam_extrinsics)
+    #         xyzrgbs.append(xyzrgb)
+
+    #     # Visualize in open3d.
+    #     import open3d as o3d
+    #     vis = o3d.visualization.Visualizer()
+    #     vis.create_window()
+    #     pcd = o3d.geometry.PointCloud()
+    #     pcd.points = o3d.utility.Vector3dVector(xyzrgbs[0][:, :3])
+    #     pcd.colors = o3d.utility.Vector3dVector(xyzrgbs[0][:, 3:])
+    #     vis.add_geometry(pcd)
+    #     frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6)
+    #     vis.add_geometry(frame)
+
+    #     counter: int = 1
+
+    #     def update_pc(vis):
+    #         global counter
+    #         if counter < len(xyzrgbs) - 1:
+    #             pcd.points = o3d.utility.Vector3dVector(xyzrgbs[counter][:, :3])
+    #             pcd.colors = o3d.utility.Vector3dVector(xyzrgbs[counter][:, 3:])
+    #             vis.update_geometry(pcd)
+    #             counter += 1
+
+    #     vis.register_animation_callback(update_pc)
+    #     vis.run()
+    #     vis.destroy_window()
+
+    def vis_frame_pc(self, xyz):
+        # xyzrgb, xyz_cam = rgbd_to_pointcloud(obs['images']['top'], obs['depth']['top'], \
+        #     cam_intrinsics, cam_extrinsics)
         import open3d as o3d
         vis = o3d.visualization.Visualizer()
         vis.create_window()
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(xyzrgbs[0][:, :3])
-        pcd.colors = o3d.utility.Vector3dVector(xyzrgbs[0][:, 3:])
-        vis.add_geometry(pcd)
-        frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6)
-        vis.add_geometry(frame)
-
-        counter: int = 1
-
-        def update_pc(vis):
-            global counter
-            if counter < len(xyzrgbs) - 1:
-                pcd.points = o3d.utility.Vector3dVector(xyzrgbs[counter][:, :3])
-                pcd.colors = o3d.utility.Vector3dVector(xyzrgbs[counter][:, 3:])
-                vis.update_geometry(pcd)
-                counter += 1
-
-        vis.register_animation_callback(update_pc)
-        vis.run()
-        vis.destroy_window()
-
-    def vis_frame_pc(self, obs):
-        xyzrgb, xyz_cam = rgbd_to_pointcloud(obs['images']['top'], obs['depth']['top'], \
-            cam_intrinsics, cam_extrinsics)
-        import open3d as o3d
-        vis = o3d.visualization.Visualizer()
-        vis.create_window()
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(xyzrgb[:, :3])
-        pcd.colors = o3d.utility.Vector3dVector(xyzrgb[:, 3:])
-        # pcd.points = o3d.utility.Vector3dVector(xyz_cam)
+        # pcd.points = o3d.utility.Vector3dVector(xyzrgb[:, :3])
+        # pcd.colors = o3d.utility.Vector3dVector(xyzrgb[:, 3:])
+        pcd.points = o3d.utility.Vector3dVector(xyz)
         vis.add_geometry(pcd)
         frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6)
         vis.add_geometry(frame)
         vis.run()
         vis.destroy_window()
 
+
+    def merge_to_top(self, pc_dict, key, new_pc):
+        if key in pc_dict:
+            pc_dict[key] = np.vstack([pc_dict[key], new_pc])
+        else:
+            pc_dict[key] = new_pc
 
     def get_observation(self, physics):
         self.obs_idx += 1
 
         obs = super().get_observation(physics)
 
-        obs['depth'] = dict()
-        obs['depth']['top'] = physics.render(height=480, width=640, camera_id='top', depth=True)
-        obs['seg'] = dict()
-        raw_seg= physics.render(height=480, width=640, camera_id='top', segmentation=True)
-        processed_seg = raw_seg[:, :, 0].astype(np.uint8) 
-        obs['seg']['top'] = processed_seg+ 1  # for visualization
-
-
         if not self.recorded_pc and self.obs_idx == 10:
-            peg_mask = self.get_mask('peg', physics, processed_seg)
-            socket_mask = self.get_mask('socket', physics, processed_seg)
-
-            cam_intrinsics = self.get_cam_intrinsics(physics, 'top')
-            cam_extrinsics = self.get_cam_extrinsics(physics, 'top')
-
-            socket_pc = self.get_pc_with_mask(socket_mask, cam_intrinsics, cam_extrinsics, \
-                obs['depth']['top'], obs['images']['top'])
-            peg_pc = self.get_pc_with_mask(peg_mask, cam_intrinsics, cam_extrinsics, \
-                obs['depth']['top'], obs['images']['top'])
-
-            
             obs['socket_pc'] = dict()
-            obs['socket_pc']['top'] = socket_pc
             obs['peg_pc'] = dict()
-            obs['peg_pc']['top'] = peg_pc
+            for cam_id in ['angle', 'back']:
+
+                obs['depth'] = dict()
+                obs['depth'][cam_id] = physics.render(height=480, width=640, camera_id=cam_id, depth=True)
+                obs['seg'] = dict()
+                raw_seg= physics.render(height=480, width=640, camera_id=cam_id, segmentation=True)
+                processed_seg = raw_seg[:, :, 0].astype(np.uint8) 
+                obs['seg'][cam_id] = processed_seg+ 1  # for visualization
+
+
+                peg_mask = self.get_mask('peg', physics, processed_seg)
+                socket_mask = self.get_mask('socket', physics, processed_seg)
+
+                cam_intrinsics = self.get_cam_intrinsics(physics, cam_id)
+                cam_extrinsics = self.get_cam_extrinsics(physics, cam_id)
+
+                socket_pc = self.get_pc_with_mask(socket_mask, cam_intrinsics, cam_extrinsics, \
+                    obs['depth'][cam_id], obs['images'][cam_id])
+                peg_pc = self.get_pc_with_mask(peg_mask, cam_intrinsics, cam_extrinsics, \
+                    obs['depth'][cam_id], obs['images'][cam_id])
+
+                obs['socket_pc'][cam_id] = socket_pc
+                obs['peg_pc'][cam_id] = peg_pc
+
+                ## merge front and back to top
+                self.merge_to_top(obs['socket_pc'], 'top', obs['socket_pc'][cam_id])
+                self.merge_to_top(obs['peg_pc'], 'top', obs['peg_pc'][cam_id])
 
             self.recorded_pc = True
+
+            # ### debug using o3d
+            # self.vis_frame_pc(obs['peg_pc']['top'])
         return obs
 
     def get_mask(self, obj_name, physics, raw_seg):

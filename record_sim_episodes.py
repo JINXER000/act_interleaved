@@ -192,8 +192,8 @@ def main(args):
                 peg_pc = obs.create_group('peg_pc')
                 for cam_name in camera_names:
                 
-                    socket_pc.create_dataset(cam_name, (1, 256, 3), dtype='float32')
-                    peg_pc.create_dataset(cam_name, (1, 256, 3), dtype='float32')
+                    socket_pc.create_dataset(cam_name, (1, 512, 3), dtype='float32')
+                    peg_pc.create_dataset(cam_name, (1, 512, 3), dtype='float32')
 
 
             for name, array in data_dict.items():

@@ -49,6 +49,7 @@ def make_ee_sim_env(task_name):
                                   n_sub_steps=None, flat_observation=False)
     else:
         raise NotImplementedError
+
     return env
 
 class BimanualViperXEETask(base.Task):

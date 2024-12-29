@@ -20,11 +20,8 @@ from tqdm import tqdm
 from einops import rearrange
 import time
 
-from constants import DT
-from constants import PUPPET_GRIPPER_JOINT_OPEN
-
 from act_utils import load_data # data functions
-from act_utils import sample_box_pose, sample_insertion_pose # robot functions
+from act_utils import sample_box_pose, sample_insertion_pose #e robot functions
 from act_utils import compute_dict_mean, set_seed, detach_dict # helper functions
 from policy import ACTPolicy, CNNMLPPolicy
 from visualize_episodes import save_videos
@@ -41,6 +38,8 @@ import sys
 # sys.path.append("/home/xuhang/Desktop/xh-codes/ACT/aloha/")
 
 from aloha.aloha_scripts import constants
+from constants import DT
+from constants import PUPPET_GRIPPER_JOINT_OPEN
 
 import torch
 
@@ -81,18 +80,20 @@ def limit_step_diff(target_qpos, qpos, max_diff = 0.06):
 
 
 class ACT_Evaluator(object):
-    def __init__(self, with_planning = False):
+    def __init__(self, with_planning = False, task_name = None, init_obj_states_arr = None):
         self.with_planning = with_planning
-        arg_dict = self.get_default_args()
-        self.initialize(arg_dict)
 
-    def get_default_args(self):
+        arg_dict = self.get_default_args(task_name=task_name)
+        self.initialize(arg_dict, init_obj_states_arr = init_obj_states_arr)
+
+    def get_default_args(self, task_name):
         parser = argparse.ArgumentParser()
         parser.add_argument('--eval', action='store_false')
         parser.add_argument('--onscreen_render', action='store_true')
-        parser.add_argument('--ckpt_dir', type=str, default='/home/xuhang/interbotix_ws/src/ACT/ckpt_dir/aloha_transfer_tape')
+        parser.add_argument('--ckpt_dir', type=str, default='/home/user/yzchen_ws/TAMP-ubuntu22/ALOHA/act/ckpt/')
         parser.add_argument('--policy_class',  type=str, default='ACT')
-        parser.add_argument('--task_name', type=str, help='task_name', default='aloha_transfer_tape')
+
+        parser.add_argument('--task_name', type=str, help='task_name', default=task_name)
         parser.add_argument('--batch_size', type=int, help='batch_size', default=8)
         parser.add_argument('--seed', type=int, help='seed', default=0)
         parser.add_argument('--num_epochs', type=int, help='num_epochs', default=2000)
@@ -108,7 +109,7 @@ class ACT_Evaluator(object):
 
         return vars(parser.parse_args())
     
-    def initialize(self, args):
+    def initialize(self, args, init_obj_states_arr = None):
         set_seed(1)
         # command line parameters
         is_eval = args['eval']
@@ -194,14 +195,14 @@ class ACT_Evaluator(object):
         self.onscreen_cam = 'angle'
 
         # load policy and stats
-        ckpt_path = os.path.join(ckpt_dir, ckpt_name)
+        ckpt_path = os.path.join(ckpt_dir, task_name, ckpt_name)
         self.policy = make_policy(policy_class, policy_config)
         loading_status = self.policy.load_state_dict(torch.load(ckpt_path))
         print(loading_status)
         self.policy.cuda()
         self.policy.eval()
         print(f'Loaded: {ckpt_path}')
-        stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
+        stats_path = os.path.join(ckpt_dir, task_name, f'dataset_stats.pkl')
         with open(stats_path, 'rb') as f:
             stats = pickle.load(f)
 
@@ -218,7 +219,7 @@ class ACT_Evaluator(object):
             env_max_reward = 0
         else:
             from sim_env import make_sim_env
-            self.env = make_sim_env(task_name)
+            self.env = make_sim_env(task_name, init_obj_states_arr = init_obj_states_arr)
             env_max_reward = self.env.task.max_reward
 
         self.query_frequency = policy_config['num_queries']

@@ -151,7 +151,7 @@ class InsertionPolicy(BasePolicy):
 
 def test_policy(task_name):
     # example rolling out pick_and_transfer policy
-    onscreen_render = True
+    onscreen_render = False
     inject_noise = False
 
     # setup the environment
@@ -163,6 +163,16 @@ def test_policy(task_name):
     else:
         raise NotImplementedError
 
+    # from dm_control import viewer
+    # viewer.launch(env)
+
+    ## interactive viewer. refer: https://mujoco.readthedocs.io/en/3.1.2/python.html
+    import mujoco
+    import mujoco.viewer
+    model = env.physics.model.ptr
+    data = env.physics.data.ptr
+    viewer = mujoco.viewer.launch_passive(model, data)
+
     for episode_idx in range(2):
         ts = env.reset()
         episode = [ts]
@@ -171,7 +181,7 @@ def test_policy(task_name):
             plt_img = ax.imshow(ts.observation['images']['angle'])
             plt.ion()
 
-        policy = PickAndTransferPolicy(inject_noise)
+        policy = InsertionPolicy(inject_noise)
         for step in range(episode_len):
             action = policy(ts)
             ts = env.step(action)
@@ -179,6 +189,9 @@ def test_policy(task_name):
             if onscreen_render:
                 plt_img.set_data(ts.observation['images']['angle'])
                 plt.pause(0.02)
+            else:
+                # viewer.render()
+                viewer.sync()
         plt.close()
 
         episode_return = np.sum([ts.reward for ts in episode[1:]])
@@ -189,6 +202,6 @@ def test_policy(task_name):
 
 
 if __name__ == '__main__':
-    test_task_name = 'sim_transfer_cube_scripted'
+    test_task_name = 'sim_insertion_scripted'
     test_policy(test_task_name)
 

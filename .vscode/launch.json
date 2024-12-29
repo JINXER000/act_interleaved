@@ -4,22 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": [
-                // // eval act with tamp
-                // "--eval", "--task_name=sim_insertion_tamp","--ckpt_dir=./ckpt/sim_insertion_human", "--policy_class=ACT", "--kl_weight=10","--chunk_size=100", "--hidden_dim=512", "--batch_size=8", "--dim_feedforward=3200", "--num_epochs=2000", "--lr=1e-5", "--seed=0", "--onscreen_render"
-
-                // collect data for tamp
-                "--task_name", "sim_insertion_tamp",
-                "--dataset_dir", "./dataset/sim_insertion_tamp/",
-                "--num_episodes", "1", //"--onscreen_render",
-            ]
+            "args": []
         }
     ]
 }
