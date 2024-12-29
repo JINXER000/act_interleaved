@@ -272,7 +272,12 @@ class ACT_Evaluator(object):
             target_qpos = action
 
             ### limit the step difference to 0.06
-            target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.09)
+            # Too small, lfd will not move to the target. Too large, the robot will move too fast.
+            transition_period = 20  ### 10*0.05 = 0.5s
+            if self.t < transition_period:
+                target_qpos = limit_step_diff(target_qpos, qpos_numpy, max_diff = 0.04)
+            else:
+                pass
 
             ### step the environment
             self.ts = self.env.step(target_qpos)
