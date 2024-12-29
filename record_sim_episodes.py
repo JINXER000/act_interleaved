@@ -120,6 +120,7 @@ def main(args):
         else:
             success.append(0)
             print(f"{episode_idx=} Failed")
+            continue
 
         plt.close()
 
