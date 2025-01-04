@@ -350,7 +350,7 @@ class TAMPInsertionTask(InsertionTask):
 
         obs = super().get_observation(physics)
 
-        if not self.recorded_pc and self.obs_idx == 10:
+        if not self.recorded_pc and self.obs_idx == 50:
             obs['socket_pc'] = dict()
             obs['peg_pc'] = dict()
             for cam_id in ['angle', 'back']:

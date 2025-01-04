@@ -166,20 +166,22 @@ def test_policy(task_name):
     # from dm_control import viewer
     # viewer.launch(env)
 
-    ## interactive viewer. refer: https://mujoco.readthedocs.io/en/3.1.2/python.html
-    import mujoco
-    import mujoco.viewer
-    model = env.physics.model.ptr
-    data = env.physics.data.ptr
-    viewer = mujoco.viewer.launch_passive(model, data)
+    if onscreen_render:
+        ax = plt.subplot()
+        plt_img = ax.imshow(ts.observation['images']['angle'])
+        plt.ion()
+    else:
+        ## interactive viewer. refer: https://mujoco.readthedocs.io/en/3.1.2/python.html
+        import mujoco
+        import mujoco.viewer
+        model = env.physics.model.ptr
+        data = env.physics.data.ptr
+        viewer = mujoco.viewer.launch_passive(model, data)
 
     for episode_idx in range(2):
         ts = env.reset()
         episode = [ts]
-        if onscreen_render:
-            ax = plt.subplot()
-            plt_img = ax.imshow(ts.observation['images']['angle'])
-            plt.ion()
+
 
         policy = InsertionPolicy(inject_noise)
         for step in range(episode_len):

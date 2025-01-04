@@ -20,20 +20,19 @@ from sim_env import make_sim_env, BOX_POSE
 
 from eval_act_wrapper import ACT_Evaluator
 
-NORMALIZED_OPEN = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(PUPPET_GRIPPER_POSITION_OPEN)
-NORMALIZED_CLOSE = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(PUPPET_GRIPPER_POSITION_CLOSE)
 import sys
 CUR_FOLDER = os.getcwd()
 EXE_FOLDER = '/home/user/yzchen_ws/TAMP-ubuntu22/pddlstream_aloha/'
 sys.path.append(EXE_FOLDER)
-from examples.pybullet.aloha_real.openworld_aloha.run_openworld import load_yaml_param, read_pickle, Pose, Euler, Point #, qpos_to_eepose
-from examples.pybullet.utils.pybullet_tools.aloha_primitives import BodyPath, multiply
+from examples.pybullet.aloha_real.openworld_aloha.run_openworld import load_insertion_param, read_pickle, Pose, Euler, Point #, qpos_to_eepose
+
+
+NORMALIZED_OPEN = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(PUPPET_GRIPPER_POSITION_OPEN)
+NORMALIZED_CLOSE = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(PUPPET_GRIPPER_POSITION_CLOSE)
 
 
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
 STATE_NAMES = JOINT_NAMES + ["gripper"]
-
-
 
 def visualize_joints(qpos_list, plot_path=None, ylim=None, label_overwrite=None):
 
@@ -64,23 +63,45 @@ def qpos_16d_to_14d(qpos_16d):
     qpos_14d = np.delete(qpos_14d, 14)
     return qpos_14d
     
-class Tamp_replayer(ACT_Evaluator):
-    def __init__(self, task_name, init_obj_states_arr = None):
-        super().__init__(task_name=task_name, init_obj_states_arr = init_obj_states_arr)
-        self.ts = self.env.reset()
 
-    def replay_tamp_step(self, qpos):
-        self.ts = self.env.step(qpos)
-        return self.ts
 
-    def get_ts_with_pc(self,  kw = 'peg_pc'):
-        ts = self.ts
-        while kw not in ts.observation:
-            ts = self.env.step(START_ARM_POSE)
+def get_box_poses(obj_info_ls):
+    socket_stable_height = peg_stable_height= 0.05
+    y_bias = 0.0
+    socket_info, peg_info, colObs_info = obj_info_ls
+    # socket_pose = Pose(Point(x=socket_info.x, y=socket_info.y + y_bias, z = socket_stable_height), euler=Euler( pitch=1.57))
+     # peg_pose = Pose(Point(x=peg_info.x, y=peg_info.y + y_bias, z = peg_stable_height), euler=Euler(roll=1.57))
+    # in mujoco, the origin is not the center of the table 
+    socket_xyz = Point(x=socket_info.x, y=socket_info.y + y_bias, z = socket_stable_height) - MJ2BULLET_OFFSET
+    socket_pose = Pose(socket_xyz, euler=Euler(yaw=socket_info.yaw))
+    peg_xyz = Point(x=peg_info.x, y=peg_info.y + y_bias, z = peg_stable_height) - MJ2BULLET_OFFSET
+    peg_pose = Pose(peg_xyz, euler=Euler(yaw=peg_info.yaw))
 
-        self.ts = ts
-        # pc = self.env.get_first_pc(target_id = 10)
-        return ts
+    
+    # NOTE: pybullet quat is xyzw, mujoco quat is wxyz
+    socket_quat = [socket_pose[1][3], socket_pose[1][0], socket_pose[1][1], socket_pose[1][2]]
+    peg_quat = [peg_pose[1][3], peg_pose[1][0], peg_pose[1][1], peg_pose[1][2]]
+    
+    socket_arr = np.concatenate([socket_pose[0], socket_quat])
+    peg_arr = np.concatenate([peg_pose[0], peg_quat])
+    init_obj_states = np.concatenate([peg_arr, socket_arr])
+    return init_obj_states
+    
+
+
+
+def save_mj_obsevation(ts, npz_path, task_name):
+    pc_dict = {}
+    if task_name == 'sim_insertion_tamp':
+        peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET + np.array([0, -0.01, 0.0])
+        socket_pc = ts.observation['socket_pc']['top'] + MJ2BULLET_OFFSET + np.array([0, 0.05, 0.0])
+
+        pc_dict.update({'peg': peg_pc, 'socket': socket_pc})
+    else:
+        raise NotImplementedError("This task is not supported")
+    
+    np.savez(npz_path, **pc_dict)
+
 
 
 
@@ -117,48 +138,46 @@ def iterate_sequence(seq):
                 next_conf_14d[6] = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(cfg[0])
             elif primitive.group == "right_gripper":
                 next_conf_14d[-1] = PUPPET_GRIPPER_POSITION_NORMALIZE_FN(cfg[0])
+                # next_conf_14d[-1] = NORMALIZED_CLOSE if cfg[0] < 0.5 else NORMALIZED_OPEN
 
             cur_conf_14d = next_conf_14d
             yield next_conf_14d
 
 
+class Tamp_replayer(ACT_Evaluator):
+    def __init__(self, task_name, init_obj_states_arr = None, use_viewer = True):
+        super().__init__(task_name=task_name, init_obj_states_arr = init_obj_states_arr)
+        self.ts = self.env.reset()
 
+        if use_viewer:
+            import mujoco
+            import mujoco.viewer
+            model = self.env.physics.model.ptr
+            data = self.env.physics.data.ptr
+            self.viewer = mujoco.viewer.launch_passive(model, data)
+        else:
+            self.viewer = None
 
+    def replay_tamp_step(self, qpos):
+        self.ts = self.env.step(qpos)
 
-def get_box_poses(obj_info_ls):
-    socket_stable_height = peg_stable_height= 0.05
-    y_bias = 0.49
-    socket_info, peg_info, colObs_info = obj_info_ls
-    # socket_pose = Pose(Point(x=socket_info.x, y=socket_info.y + y_bias, z = socket_stable_height), euler=Euler( pitch=1.57))
-    # peg_pose = Pose(Point(x=peg_info.x, y=peg_info.y + y_bias, z = peg_stable_height), euler=Euler(roll=1.57))
-    # in mujoco, the origin is not the center of the table 
-    socket_xyz = Point(x=socket_info.x, y=socket_info.y, z = socket_stable_height) - MJ2BULLET_OFFSET
-    socket_pose = Pose(socket_xyz, euler=Euler(yaw=socket_info.yaw))
-    peg_xyz = Point(x=peg_info.x, y=peg_info.y, z = peg_stable_height) - MJ2BULLET_OFFSET
-    peg_pose = Pose(peg_xyz, euler=Euler(yaw=peg_info.yaw))
-
+        if self.viewer is not None:
+            self.viewer.sync()
+        return self.ts
     
-    # NOTE: pybullet quat is xyzw, mujoco quat is wxyz
-    socket_quat = [socket_pose[1][3], socket_pose[1][0], socket_pose[1][1], socket_pose[1][2]]
-    peg_quat = [peg_pose[1][3], peg_pose[1][0], peg_pose[1][1], peg_pose[1][2]]
-    
-    socket_arr = np.concatenate([socket_pose[0], socket_quat])
-    peg_arr = np.concatenate([peg_pose[0], peg_quat])
-    init_obj_states = np.concatenate([peg_arr, socket_arr])
-    return init_obj_states
-    
-    
-def call_act(act_evaluator, ts):
-    act_evaluator.reset_all(reset_grippers = False, at_start=False)
-    for i in range(act_evaluator.max_timesteps):
-        ts = act_evaluator.inference(ts)
+    def inference(self):
+        ts = super().inference()
+        if self.viewer is not None:
+            self.viewer.sync()
 
+        return ts
 
 
 if __name__ == "__main__":
+
     CFG_PATH = os.path.join(EXE_FOLDER, 'config/aloha_scene.yaml')
     # load param from yaml
-    CMD_PATH, obj_info_ls, is_record = load_yaml_param(CFG_PATH)
+    CMD_PATH, obj_info_ls, is_record = load_insertion_param(CFG_PATH)
     
     pkl_path = os.path.join(CMD_PATH, "finegrand_transfer.pkl")
     seq = read_pickle(pkl_path)

@@ -20,7 +20,9 @@ from tqdm import tqdm
 from einops import rearrange
 import time
 
-from act_utils import load_data # data functions
+from constants import DT, START_ARM_POSE
+
+from act_utils import plt_render
 from act_utils import sample_box_pose, sample_insertion_pose #e robot functions
 from act_utils import compute_dict_mean, set_seed, detach_dict # helper functions
 from policy import ACTPolicy, CNNMLPPolicy
@@ -80,11 +82,49 @@ def limit_step_diff(target_qpos, qpos, max_diff = 0.06):
 
 
 class ACT_Evaluator(object):
-    def __init__(self, with_planning = False, task_name = None, init_obj_states_arr = None):
+    def __init__(self, with_planning = False, task_name = None, \
+                 init_obj_states_arr = None, use_viewer = False, use_plt = False):
         self.with_planning = with_planning
 
         arg_dict = self.get_default_args(task_name=task_name)
         self.initialize(arg_dict, init_obj_states_arr = init_obj_states_arr)
+
+        self.init_gui(use_viewer = use_viewer, use_plt = use_plt)
+
+    def init_gui(self, use_viewer = False, use_plt = False):
+        if use_viewer:
+            import mujoco
+            import mujoco.viewer
+            model = self.env.physics.model.ptr
+            data = self.env.physics.data.ptr
+            self.viewer = mujoco.viewer.launch_passive(model, data)
+            self.plotter = None
+        elif use_plt:
+            self.viewer = None
+            self.plotter = plt_render(self.ts, dt=DT, img_type='rgb', cam_name='angle')
+        else:
+            self.viewer = None
+            self.plotter = None
+
+    def update_gui(self):
+        if self.viewer is not None:
+            self.viewer.sync()
+        if self.plotter is not None:
+            self.plotter.update(self.ts)
+
+    def get_ts_until_pc(self,  kw = 'peg_pc', min_idx = 1000):
+        assert 'sim_insertion' in self.task_name
+        i=0
+        ts = self.ts
+        while 1:
+            ts = self.env.step(START_ARM_POSE)
+            if kw  in ts.observation or i > min_idx:
+                break
+            i+=1
+
+        self.ts = ts
+        # pc = self.env.get_first_pc(target_id = 10)
+        return ts
 
     def get_default_args(self, task_name):
         parser = argparse.ArgumentParser()
@@ -117,6 +157,7 @@ class ACT_Evaluator(object):
         policy_class = args['policy_class']
         onscreen_render = args['onscreen_render']
         task_name = args['task_name']
+        self.task_name = task_name
         batch_size_train = args['batch_size']
         batch_size_val = args['batch_size']
         num_epochs = args['num_epochs']
@@ -229,8 +270,12 @@ class ACT_Evaluator(object):
 
         self.num_queries = policy_config['num_queries']
 
-        if real_robot:
-            self.reset_all()
+
+        self.reset_all()
+        if 'sim' in self.task_name:
+            self.reset_all(reset_grippers=False)
+
+            self.ts = self.get_ts_until_pc()
 
 
 
@@ -284,6 +329,7 @@ class ACT_Evaluator(object):
 
             self.t += 1
 
+        self.update_gui()
         return self.ts
 
     def reset_all(self, reset_grippers = True, at_start = True):
@@ -298,6 +344,15 @@ class ACT_Evaluator(object):
         self.all_time_actions = torch.zeros([self.max_timesteps, self.max_timesteps+self.num_queries, self.state_dim]).cuda()
 
         self.t = 0
+
+    def replay_tamp_step(self, qpos):
+        self.ts = self.env.step(qpos)
+        self.update_gui()
+
+        return self.ts
+    
+
+
 
 
 if __name__ == '__main__':
