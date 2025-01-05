@@ -194,13 +194,24 @@ from mujoco_py.generated import const
 # from dm_control.mujoco.wrapper.core import id2name
 def get_geom_ids(env, obj = 'peg'):
     geom_ids = []
-    if obj == 'peg':
-        geom_ids = [env.model.name2id('red_peg', const.OBJ_GEOM)]
-    elif obj == 'socket':
-        for sock_geom_name in ['socket-1', 'socket-2', 'socket-3', 'socket-4', 'pin']:
-            geom_ids.append(env.model.name2id(sock_geom_name, const.OBJ_GEOM))
-    else:
-        raise NotImplementedError(f'{obj=}')
+    # if obj == 'peg':
+    #     geom_ids = [env.model.name2id('red_peg', const.OBJ_GEOM)]
+    # elif obj == 'socket':
+    #     for sock_geom_name in ['socket-1', 'socket-2', 'socket-3', 'socket-4', 'pin']:
+    #         geom_ids.append(env.model.name2id(sock_geom_name, const.OBJ_GEOM))
+    # else:
+    #     raise NotImplementedError(f'{obj=}')
+
+    for i in range(40):
+        name = env.model.id2name(i, const.OBJ_GEOM)
+        if obj in name:
+            geom_ids.append(i)
+    
+    # dbg_names = []
+    # for i in range(40):
+    #     name = env.model.id2name(i, const.OBJ_GEOM)
+    #     if 'socket' in name or 'peg' in name:
+    #         dbg_names.append(name)
     return geom_ids
             
 

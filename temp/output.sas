@@ -149,7 +149,7 @@ begin_variable
 var20
 -1
 5
-Atom atconf(v7, #a2)
+Atom atconf(v7, #a0)
 Atom atconf(v7, #l3)
 Atom atconf(v7, #o15)
 Atom atconf(v7, #o17)
@@ -166,7 +166,7 @@ begin_variable
 var22
 -1
 5
-Atom atconf(v5, #a0)
+Atom atconf(v5, #a2)
 Atom atconf(v5, #l2)
 Atom atconf(v5, #o15)
 Atom atconf(v5, #o17)

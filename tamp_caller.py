@@ -64,7 +64,7 @@ def qpos_16d_to_14d(qpos_16d):
     return qpos_14d
     
 
-
+## input obj pose in the pyb frame, should transform to mujoco frame
 def get_box_poses(obj_info_ls):
     socket_stable_height = peg_stable_height= 0.05
     y_bias = 0.0
@@ -89,18 +89,19 @@ def get_box_poses(obj_info_ls):
     
 
 
-
+## input pc in the mujoco frame, should transform to pybullet frame
 def save_mj_obsevation(ts, npz_path, task_name):
     pc_dict = {}
     if task_name == 'sim_insertion_tamp':
-        peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET + np.array([0, -0.01, 0.0])
-        socket_pc = ts.observation['socket_pc']['top'] + MJ2BULLET_OFFSET + np.array([0, 0.05, 0.0])
+        peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, -0.01, 0.0])
+        socket_pc = ts.observation['socket_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, 0.05, 0.0])
 
         pc_dict.update({'peg': peg_pc, 'socket': socket_pc})
     else:
         raise NotImplementedError("This task is not supported")
     
     np.savez(npz_path, **pc_dict)
+    return pc_dict
 
 
 
