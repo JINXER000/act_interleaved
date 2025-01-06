@@ -404,8 +404,9 @@ class TAMPInsertionTask(InsertionTask):
         # intrinsic_matrix = np.array([[f, 0, width / 2], [0, f, height / 2], [0, 0, 1]])
         
         theta = math.radians(fovy)
-        fx = width / 2 / np.tan(theta / 2)
+        # fx = width / 2 / np.tan(theta / 2)
         fy = height / 2 / np.tan(theta / 2)
+        fx = fy
         cx = (width-1) / 2.0
         cy = (height-1) / 2.0
         intrinsic_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])

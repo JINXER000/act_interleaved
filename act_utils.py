@@ -190,7 +190,8 @@ def set_seed(seed):
     np.random.seed(seed)
 
 import matplotlib.pyplot as plt
-from mujoco_py.generated import const
+from dm_control.mujoco.wrapper.mjbindings import enums
+# from mujoco_py.generated import const
 # from dm_control.mujoco.wrapper.core import id2name
 def get_geom_ids(env, obj = 'peg'):
     geom_ids = []
@@ -203,7 +204,7 @@ def get_geom_ids(env, obj = 'peg'):
     #     raise NotImplementedError(f'{obj=}')
 
     for i in range(40):
-        name = env.model.id2name(i, const.OBJ_GEOM)
+        name = env.model.id2name(i, enums.mjtObj.mjOBJ_GEOM)
         if obj in name:
             geom_ids.append(i)
     

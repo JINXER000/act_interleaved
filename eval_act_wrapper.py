@@ -90,6 +90,7 @@ class ACT_Evaluator(object):
         self.initialize(arg_dict, init_obj_states_arr = init_obj_states_arr)
 
         self.init_gui(use_viewer = use_viewer, use_plt = use_plt)
+        self.episode = []
 
     def init_gui(self, use_viewer = False, use_plt = False):
         if use_viewer:
@@ -332,6 +333,18 @@ class ACT_Evaluator(object):
         self.update_gui()
         return self.ts
 
+    def handle_rewards(self):
+        self.episode.append(self.ts)
+        if len(self.episode) > 100:
+            return_sofar = np.sum([ts.reward for ts in self.episode[1:]])
+            max_reward = np.max([ts.reward for ts in self.episode[1:]])
+            if max_reward == self.env.task.max_reward:
+                print(f'{self.t=} Successful, {return_sofar=}')
+                return 1
+            else:
+                # print(f'{self.t=} {return_sofar=}')
+                return 0
+
     def reset_all(self, reset_grippers = True, at_start = True):
         if self.config['real_robot']:
             self.ts = self.env.reset(fake=self.with_planning)
@@ -344,6 +357,7 @@ class ACT_Evaluator(object):
         self.all_time_actions = torch.zeros([self.max_timesteps, self.max_timesteps+self.num_queries, self.state_dim]).cuda()
 
         self.t = 0
+        self.episode = [self.ts]
 
     def replay_tamp_step(self, qpos):
         self.ts = self.env.step(qpos)
