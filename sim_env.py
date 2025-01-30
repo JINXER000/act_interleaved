@@ -265,11 +265,14 @@ class TAMPInsertionTask(InsertionTask):
             physics.named.data.qpos[:16] = START_ARM_POSE
             np.copyto(physics.data.ctrl, START_ARM_POSE)
 
-            if BOX_POSE[0] is  None:
-                    if self.init_obj_states_arr is not None:
-                        BOX_POSE[0] = self.init_obj_states_arr
-                    else:
-                        BOX_POSE[0] = np.concatenate(sample_insertion_pose())
+            if BOX_POSE[0] is None:
+                if self.init_obj_states_arr is not None:
+                    BOX_POSE[0] = self.init_obj_states_arr
+                else:
+                    BOX_POSE[0] = np.concatenate(sample_insertion_pose())
+            else:
+                self.init_obj_states_arr = BOX_POSE[0]
+                print('Resetting to initial obj poses:', BOX_POSE[0])
 
             print('initial obj poses:', BOX_POSE[0])
 
@@ -345,6 +348,10 @@ class TAMPInsertionTask(InsertionTask):
         else:
             pc_dict[key] = new_pc
 
+    def reset_pc_recording(self):
+        self.recorded_pc = False
+        self.obs_idx = 0
+        
     def get_observation(self, physics):
         self.obs_idx += 1
 

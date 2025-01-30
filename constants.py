@@ -33,8 +33,8 @@ SIM_TASK_CONFIGS = {
     },
 
     'sim_insertion_tamp': {
-        'dataset_dir': DATA_DIR + '/sim_insertion_human',
-        'num_episodes': 50,
+        'dataset_dir': DATA_DIR + '/sim_insertion_tamp',
+        'num_episodes': 44,
         'episode_len': 1500,
         'camera_names': ['top']
     },
@@ -43,7 +43,10 @@ SIM_TASK_CONFIGS = {
 ### Simulation envs fixed constants
 DT = 0.02
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
+
+PERCEPT_ARM_POSE = [0, -1.2015, 0.5727, 0.0838,1.1418,0]
 START_ARM_POSE = [0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239,  0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239]
+# START_ARM_POSE = (PERCEPT_ARM_POSE + [0.02239, -0.02239])*2
 
 XML_DIR = str(pathlib.Path(__file__).parent.resolve()) + '/assets/' # note: absolute path
 

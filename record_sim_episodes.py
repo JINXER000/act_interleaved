@@ -155,6 +155,7 @@ def main(args):
         # len(joint_traj) i.e. actions: max_timesteps
         # len(episode_replay) i.e. time steps: max_timesteps + 1
         max_timesteps = len(joint_traj)
+        pc_recorded = {'socket': False, 'peg': False}
         while joint_traj:
             action = joint_traj.pop(0)
             ts = episode_replay.pop(0)
@@ -165,10 +166,12 @@ def main(args):
                 data_dict[f'/observations/images/{cam_name}'].append(ts.observation['images'][cam_name])
 
                 if task_name == 'sim_insertion_tamp':
-                    if 'socket_pc' in ts.observation:
+                    if 'socket_pc' in ts.observation and not pc_recorded['socket']:
                         data_dict[f'/observations/socket_pc/{cam_name}'].append(ts.observation['socket_pc'][cam_name])
-                    if 'peg_pc' in ts.observation:
+                        pc_recorded['socket'] = True
+                    if 'peg_pc' in ts.observation and not pc_recorded['peg']:
                         data_dict[f'/observations/peg_pc/{cam_name}'].append(ts.observation['peg_pc'][cam_name])
+                        pc_recorded['peg'] = True
 
         # HDF5
         t0 = time.time()
