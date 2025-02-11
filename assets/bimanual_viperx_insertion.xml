@@ -14,6 +14,7 @@
 
         </body>
 
+
         <body name="socket" pos="-0.2 0.5 0.05">
             <joint name="blue_socket_joint" type="free" frictionloss="0.01" />
             <inertial pos="0 0 0" mass="0.05" diaginertia="0.002 0.002 0.002" />
@@ -26,6 +27,12 @@
             <geom condim="4" solimp="2 1 0.01" solref="0.01 1" friction="1 0.05 0.001" pos="-0.03 0 0.032" size="0.03 0.018 0.01" type="box" name="socket-5" rgba="0 0 1 1" />
             <geom  pos="-0.06 0.00 -0.02" quat = "1 0 0 0" type="mesh" mesh="tricol_socket"  name="socket_tricol" rgba="0 0 1 1" />
 
+        </body>
+
+       <body name="highcol" pos="0.0 0.5 0.15">
+            <joint name="col_joint" type="free" frictionloss="0.01" />
+            <inertial pos="0 0 0" mass="0.05" diaginertia="0.002 0.002 0.002" />
+            <geom  pos="-0.0 0.00 -0.0" quat = "1 0 0 0" type="mesh" mesh="highcol"  name="highcol" rgba="0 1 1 1" />
         </body>
 
     </worldbody>
@@ -52,7 +59,7 @@
     </actuator>
 
     <keyframe>
-        <key qpos="0 -0.96 1.16 0 -0.3 0 0.024 -0.024  0 -0.96 1.16 0 -0.3 0 0.024 -0.024  0.2 0.5 0.05 1 0 0 0  -0.2 0.5 0.05 1 0 0 0"/>
+        <key qpos="0 -0.96 1.16 0 -0.3 0 0.024 -0.024  0 -0.96 1.16 0 -0.3 0 0.024 -0.024  0.2 0.5 0.05 1 0 0 0  -0.2 0.5 0.05 1 0 0 0   -0.0 0.5 0.15 1 0 0 0"/>
     </keyframe>
 
 

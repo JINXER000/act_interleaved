@@ -198,10 +198,11 @@ class InsertionTask(BimanualViperXTask):
             physics.named.data.qpos[:16] = START_ARM_POSE
             np.copyto(physics.data.ctrl, START_ARM_POSE)
             if BOX_POSE[0] is  None:
-                BOX_POSE[0] = np.concatenate(sample_insertion_pose())
+                BOX_POSE[0] = np.concatenate(sample_insertion_pose(has_col = True))
 
-            physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
+            # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
             # print(f"{BOX_POSE=}")
+            physics.named.data.qpos[-7*3:] = BOX_POSE[0] # last is highcol
         super().initialize_episode(physics)
 
     @staticmethod
@@ -269,11 +270,12 @@ class TAMPInsertionTask(InsertionTask):
                     if self.init_obj_states_arr is not None:
                         BOX_POSE[0] = self.init_obj_states_arr
                     else:
-                        BOX_POSE[0] = np.concatenate(sample_insertion_pose())
+                        BOX_POSE[0] = np.concatenate(sample_insertion_pose(has_col = True))
 
             print('initial obj poses:', BOX_POSE[0])
 
-            physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
+            # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
+            physics.named.data.qpos[-7*3:] = BOX_POSE[0] # last is highcol
             # print(f"{BOX_POSE=}")
         super().initialize_episode(physics)
 

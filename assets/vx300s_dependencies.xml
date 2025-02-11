@@ -14,6 +14,7 @@
         <mesh name="vx300s_10_gripper_finger_right" file="vx300s_10_custom_finger_right.stl" scale="0.001 0.001 0.001" />
         <mesh name="tricol_peg" file="tricol_peg.stl" scale="0.001 0.001 0.001" />
         <mesh name="tricol_socket" file="tricol_socket.stl" scale="0.001 0.001 0.001" />
+        <mesh name="highcol" file="highcol.stl" scale="0.001 0.001 0.001" />
 
     </asset>
 

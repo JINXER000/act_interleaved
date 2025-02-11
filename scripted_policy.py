@@ -151,7 +151,7 @@ class InsertionPolicy(BasePolicy):
 
 def test_policy(task_name):
     # example rolling out pick_and_transfer policy
-    onscreen_render = False
+    onscreen_render = True
     inject_noise = False
 
     # setup the environment
@@ -165,7 +165,7 @@ def test_policy(task_name):
 
     # from dm_control import viewer
     # viewer.launch(env)
-
+    ts = env.reset()
     if onscreen_render:
         ax = plt.subplot()
         plt_img = ax.imshow(ts.observation['images']['angle'])

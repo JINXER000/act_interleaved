@@ -142,9 +142,9 @@ def sample_box_pose():
     cube_quat = np.array([1, 0, 0, 0])
     return np.concatenate([cube_position, cube_quat])
 
-def sample_insertion_pose():
+def sample_insertion_pose(has_col = False):
     # Peg
-    x_range = [0.1, 0.2]
+    x_range = [0.18, 0.2]
     y_range = [0.4, 0.6]
     z_range = [0.05, 0.05]
 
@@ -155,7 +155,7 @@ def sample_insertion_pose():
     peg_pose = np.concatenate([peg_position, peg_quat])
 
     # Socket
-    x_range = [-0.2, -0.1]
+    x_range = [-0.2, -0.18]
     y_range = [0.4, 0.6]
     z_range = [0.05, 0.05]
 
@@ -164,6 +164,10 @@ def sample_insertion_pose():
 
     socket_quat = np.array([1, 0, 0, 0])
     socket_pose = np.concatenate([socket_position, socket_quat])
+
+    if has_col:
+        colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
+        socket_pose = np.concatenate([socket_pose, colObs_pose])
 
     return peg_pose, socket_pose
 

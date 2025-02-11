@@ -219,7 +219,7 @@ class ACT_Evaluator(object):
             'real_robot': not is_sim
         }
 
-        ckpt_name = f'policy_best.ckpt'
+        ckpt_name = f'policy_best_newpc.ckpt'
 
 
         # start eval
