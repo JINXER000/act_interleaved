@@ -142,7 +142,63 @@ def sample_box_pose():
     cube_quat = np.array([1, 0, 0, 0])
     return np.concatenate([cube_position, cube_quat])
 
-def sample_insertion_pose(has_col = False):
+
+def sample_insertion_pose():
+    # Peg
+    x_range = [0.1, 0.2]
+    y_range = [0.4, 0.6]
+    z_range = [0.05, 0.05]
+
+    ranges = np.vstack([x_range, y_range, z_range])
+    peg_position = np.random.uniform(ranges[:, 0], ranges[:, 1])
+
+    peg_quat = np.array([1, 0, 0, 0])
+    peg_pose = np.concatenate([peg_position, peg_quat])
+
+    # Socket
+    x_range = [-0.2, -0.1]
+    y_range = [0.4, 0.6]
+    z_range = [0.05, 0.05]
+
+    ranges = np.vstack([x_range, y_range, z_range])
+    socket_position = np.random.uniform(ranges[:, 0], ranges[:, 1])
+
+    socket_quat = np.array([1, 0, 0, 0])
+    socket_pose = np.concatenate([socket_position, socket_quat])
+
+    return peg_pose, socket_pose
+
+def sample_insertion_xyyaw():
+    
+    # Peg
+    x_range = [0.08, 0.25]
+    y_range = [0.4, 0.6]
+    z_range = [0.05, 0.05]
+
+    ranges = np.vstack([x_range, y_range, z_range])
+    peg_position = np.random.uniform(ranges[:, 0], ranges[:, 1])
+
+    # peg_quat = np.array([1, 0, 0, 0])
+    peg_yaw = np.random.uniform(-np.pi/2, np.pi/2)
+    peg_quat = np.array([np.cos(peg_yaw/2), 0, 0, np.sin(peg_yaw/2)])
+    peg_pose = np.concatenate([peg_position, peg_quat])
+
+    # Socket
+    x_range = [-0.25, -0.08]
+    y_range = [0.4, 0.6]
+    z_range = [0.05, 0.05]
+
+    ranges = np.vstack([x_range, y_range, z_range])
+    socket_position = np.random.uniform(ranges[:, 0], ranges[:, 1])
+
+    # socket_quat = np.array([1, 0, 0, 0])
+    socket_yaw = np.random.uniform(-np.pi/2, np.pi/2)
+    socket_quat = np.array([np.cos(socket_yaw/2), 0, 0, np.sin(socket_yaw/2)])
+    socket_pose = np.concatenate([socket_position, socket_quat])
+
+    return peg_pose, socket_pose
+
+def sample_insertion_unsafe():
     # Peg
     x_range = [0.18, 0.2]
     y_range = [0.4, 0.6]
@@ -165,9 +221,9 @@ def sample_insertion_pose(has_col = False):
     socket_quat = np.array([1, 0, 0, 0])
     socket_pose = np.concatenate([socket_position, socket_quat])
 
-    if has_col:
-        colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
-        socket_pose = np.concatenate([socket_pose, colObs_pose])
+    ## TODO: randomize the object pose
+    colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
+    socket_pose = np.concatenate([socket_pose, colObs_pose])
 
     return peg_pose, socket_pose
 

@@ -45,6 +45,11 @@ from constants import PUPPET_GRIPPER_JOINT_OPEN
 
 import torch
 
+def qpos_16d_to_14d(qpos_16d):
+    qpos_14d = qpos_16d.copy()
+    qpos_14d = np.delete(qpos_14d, 7)
+    qpos_14d = np.delete(qpos_14d, 14)
+    return qpos_14d
 
 
 def make_policy(policy_class, policy_config):
@@ -83,14 +88,18 @@ def limit_step_diff(target_qpos, qpos, max_diff = 0.06):
 
 class ACT_Evaluator(object):
     def __init__(self, with_planning = False, task_name = None, \
-                 init_obj_states_arr = None, use_viewer = False, use_plt = False):
+                 init_obj_states_arr = None, use_viewer = False, \
+                    use_plt = False, vid_save_path = False):
         self.with_planning = with_planning
-
+        self.image_list = []
+        self.episode = []
+        
         arg_dict = self.get_default_args(task_name=task_name)
         self.initialize(arg_dict, init_obj_states_arr = init_obj_states_arr)
 
         self.init_gui(use_viewer = use_viewer, use_plt = use_plt)
-        self.episode = []
+        self.vid_save_path = vid_save_path
+        self.is_success = False
 
     def init_gui(self, use_viewer = False, use_plt = False):
         if use_viewer:
@@ -113,12 +122,20 @@ class ACT_Evaluator(object):
         if self.plotter is not None:
             self.plotter.update(self.ts)
 
+    def append_img(self, ts, cam_name = 'angle'):
+        observation = ts.observation
+        img = observation['images'][cam_name]
+        self.image_list.append({cam_name: img})
+
+
     def get_ts_until_pc(self,  kw = 'peg_pc', min_idx = 1000):
         assert 'sim_insertion' in self.task_name
+        self.env.task.reset_pc_recording()
         i=0
         ts = self.ts
         while 1:
-            ts = self.env.step(START_ARM_POSE)
+            ts = self.env.step(qpos_16d_to_14d(START_ARM_POSE))
+            self.append_img(ts)
             if kw  in ts.observation or i > min_idx:
                 break
             i+=1
@@ -273,12 +290,12 @@ class ACT_Evaluator(object):
 
 
         self.reset_all()
-        if 'sim' in self.task_name:
-            self.reset_all(reset_grippers=False)
-
-            self.ts = self.get_ts_until_pc()
 
 
+    def set_mj_objs(self, init_obj_states_arr):
+        from sim_env import BOX_POSE
+        BOX_POSE[0] = init_obj_states_arr
+        self.reset_all()
 
     def inference(self):
         with torch.inference_mode():    
@@ -327,6 +344,7 @@ class ACT_Evaluator(object):
 
             ### step the environment
             self.ts = self.env.step(target_qpos)
+            self.append_img(self.ts)
 
             self.t += 1
 
@@ -340,6 +358,7 @@ class ACT_Evaluator(object):
             max_reward = np.max([ts.reward for ts in self.episode[1:]])
             if max_reward == self.env.task.max_reward:
                 print(f'{self.t=} Successful, {return_sofar=}')
+                self.is_success = True
                 return 1
             else:
                 # print(f'{self.t=} {return_sofar=}')
@@ -359,11 +378,23 @@ class ACT_Evaluator(object):
         self.t = 0
         self.episode = [self.ts]
 
+        if 'sim' in self.task_name:
+            self.ts = self.get_ts_until_pc()
+
     def replay_tamp_step(self, qpos):
         self.ts = self.env.step(qpos)
+        self.append_img(self.ts)
         self.update_gui()
 
         return self.ts
+
+    def exit(self):
+        if self.vid_save_path:
+            cur_date =os.popen("date +'%d_%H-%M-%S'").read().strip()
+            result_txt = 'success' if self.is_success else 'fail'
+            save_videos(self.image_list, DT, video_path=os.path.join(self.vid_save_path, self.task_name + '_' + cur_date + '_' + result_txt + '.mp4'))
+
+        print('LfD terminated')
     
 
 

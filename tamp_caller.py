@@ -18,7 +18,7 @@ from act_utils import sample_box_pose, sample_insertion_pose,\
      plt_render # robot functions
 from sim_env import make_sim_env, BOX_POSE
 
-from eval_act_wrapper import ACT_Evaluator
+from eval_act_wrapper import ACT_Evaluator, qpos_16d_to_14d
 
 import sys
 CUR_FOLDER = os.getcwd()
@@ -57,11 +57,7 @@ def visualize_joints(qpos_list, plot_path=None, ylim=None, label_overwrite=None)
     plt.close()
 
 
-def qpos_16d_to_14d(qpos_16d):
-    qpos_14d = qpos_16d.copy()
-    qpos_14d = np.delete(qpos_14d, 7)
-    qpos_14d = np.delete(qpos_14d, 14)
-    return qpos_14d
+
     
 
 ## input obj pose in the pyb frame, should transform to mujoco frame
@@ -90,7 +86,7 @@ def get_box_poses(obj_info_ls):
 
 
 ## input pc in the mujoco frame, should transform to pybullet frame
-def save_mj_obsevation(ts, npz_path, task_name):
+def save_mj_obsevation(ts, task_name, npz_path = None):
     pc_dict = {}
     if task_name == 'sim_insertion_tamp':
         peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, -0.01, 0.0])
@@ -100,7 +96,8 @@ def save_mj_obsevation(ts, npz_path, task_name):
     else:
         raise NotImplementedError("This task is not supported")
     
-    np.savez(npz_path, **pc_dict)
+    if npz_path is not None:
+        np.savez(npz_path, **pc_dict)
     return pc_dict
 
 

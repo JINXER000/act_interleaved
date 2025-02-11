@@ -27,7 +27,9 @@ python3 imitate_episodes.py --task_name aloha_insert_10s --ckpt_dir ./ckpt_dir/a
 
 python3 imitate_episodes.py --task_name aloha_transfer_tape --ckpt_dir ./ckpt_dir/aloha_transfer_tape --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0
 
+python3 imitate_episodes.py --task_name sim_insertion_tamp --ckpt_dir ./ckpt/sim_insertion_tamp --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000 --lr 1e-5 --seed 0  
 
+python3 imitate_episodes.py --task_name cup_random --ckpt_dir /ssd1/chenyizhou/act_ckpts --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 8000 --lr 1e-5 --seed 0  
 
 # evaluation
 python3 imitate_episodes_sim.py \

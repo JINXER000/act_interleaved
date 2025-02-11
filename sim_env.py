@@ -14,7 +14,7 @@ from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 
 
-from act_utils import sample_box_pose, sample_insertion_pose, \
+from act_utils import sample_box_pose, sample_insertion_pose, sample_insertion_xyyaw, sample_insertion_unsafe, \
     get_geom_ids, rgbd_to_pointcloud, resize_point_cloud
 import math
 import IPython
@@ -270,8 +270,9 @@ class TAMPInsertionTask(InsertionTask):
                     if self.init_obj_states_arr is not None:
                         BOX_POSE[0] = self.init_obj_states_arr
                     else:
-                        BOX_POSE[0] = np.concatenate(sample_insertion_pose(has_col = True))
-
+                        BOX_POSE[0] = np.concatenate(sample_insertion_unsafe())
+            else:
+                self.init_obj_states_arr = BOX_POSE[0]
             print('initial obj poses:', BOX_POSE[0])
 
             # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
@@ -347,6 +348,10 @@ class TAMPInsertionTask(InsertionTask):
         else:
             pc_dict[key] = new_pc
 
+    def reset_pc_recording(self):
+        self.recorded_pc = False
+        self.obs_idx = 0
+        
     def get_observation(self, physics):
         self.obs_idx += 1
 
