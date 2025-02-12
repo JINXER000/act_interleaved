@@ -390,7 +390,7 @@ class ACT_Evaluator(object):
 
     def exit(self):
         if self.vid_save_path:
-            cur_date =os.popen("date +'%d_%H-%M-%S'").read().strip()
+            cur_date =os.popen("date +'%y-%m-%d_%H-%M-%S'").read().strip()
             result_txt = 'success' if self.is_success else 'fail'
             save_videos(self.image_list, DT, video_path=os.path.join(self.vid_save_path, self.task_name + '_' + cur_date + '_' + result_txt + '.mp4'))
 

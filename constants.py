@@ -35,7 +35,7 @@ SIM_TASK_CONFIGS = {
     'sim_insertion_tamp': {
         'dataset_dir': DATA_DIR + '/sim_insertion_tamp',
         'num_episodes': 44,
-        'episode_len': 1500,
+        'episode_len': 2000,
         'camera_names': ['top']
     },
 }

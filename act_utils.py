@@ -224,20 +224,20 @@ def sample_insertion_unsafe():
     socket_quat = np.array([1, 0, 0, 0])
     socket_pose = np.concatenate([socket_position, socket_quat])
 
-    # ## TODO: randomize the object pose, make sure no collisionwith peg and socket
-    # obs_x_range = [-0.0, 0.0]
-    # obs_y_range = [0.4, 0.6]
-    # obs_z_range = [0.15, 0.15]
-    # obj_ranges = np.vstack([obs_x_range, obs_y_range, obs_z_range])
-    # while True:
-    #     colObs_xyz = np.random.uniform(obj_ranges[:, 0], obj_ranges[:, 1])
-    #     obs_xy = colObs_xyz[:2]
-    #     peg_xy = peg_position[:2]
-    #     socket_xy = socket_position[:2]
-    #     if np.linalg.norm(obs_xy - peg_xy) > 0.05 and np.linalg.norm(obs_xy - socket_xy) > 0.05:
-    #         colObs_pose = np.concatenate([colObs_xyz, np.array([1, 0, 0, 0])])
-    #         break
-    colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
+    ## TODO: randomize the object pose, make sure no collisionwith peg and socket
+    obs_x_range = [-0.05, 0.05]
+    obs_y_range = [0.4, 0.6]
+    obs_z_range = [0.15, 0.15]
+    obj_ranges = np.vstack([obs_x_range, obs_y_range, obs_z_range])
+    while True:
+        colObs_xyz = np.random.uniform(obj_ranges[:, 0], obj_ranges[:, 1])
+        obs_xy = colObs_xyz[:2]
+        peg_xy = peg_position[:2]
+        socket_xy = socket_position[:2]
+        if np.linalg.norm(obs_xy - peg_xy) > 0.05 and np.linalg.norm(obs_xy - socket_xy) > 0.05:
+            colObs_pose = np.concatenate([colObs_xyz, np.array([1, 0, 0, 0])])
+            break
+    # colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
     socket_pose = np.concatenate([socket_pose, colObs_pose])
 
     return peg_pose, socket_pose
