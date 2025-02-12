@@ -199,8 +199,11 @@ def sample_insertion_xyyaw():
     return peg_pose, socket_pose
 
 def sample_insertion_unsafe():
+    # import time
+    # np.random.seed(int(time.time()))
+    np.random.seed()
     # Peg
-    x_range = [0.18, 0.2]
+    x_range = [0.1, 0.2]
     y_range = [0.4, 0.6]
     z_range = [0.05, 0.05]
 
@@ -211,7 +214,7 @@ def sample_insertion_unsafe():
     peg_pose = np.concatenate([peg_position, peg_quat])
 
     # Socket
-    x_range = [-0.2, -0.18]
+    x_range = [-0.2, -0.1]
     y_range = [0.4, 0.6]
     z_range = [0.05, 0.05]
 
@@ -221,7 +224,19 @@ def sample_insertion_unsafe():
     socket_quat = np.array([1, 0, 0, 0])
     socket_pose = np.concatenate([socket_position, socket_quat])
 
-    ## TODO: randomize the object pose
+    # ## TODO: randomize the object pose, make sure no collisionwith peg and socket
+    # obs_x_range = [-0.0, 0.0]
+    # obs_y_range = [0.4, 0.6]
+    # obs_z_range = [0.15, 0.15]
+    # obj_ranges = np.vstack([obs_x_range, obs_y_range, obs_z_range])
+    # while True:
+    #     colObs_xyz = np.random.uniform(obj_ranges[:, 0], obj_ranges[:, 1])
+    #     obs_xy = colObs_xyz[:2]
+    #     peg_xy = peg_position[:2]
+    #     socket_xy = socket_position[:2]
+    #     if np.linalg.norm(obs_xy - peg_xy) > 0.05 and np.linalg.norm(obs_xy - socket_xy) > 0.05:
+    #         colObs_pose = np.concatenate([colObs_xyz, np.array([1, 0, 0, 0])])
+    #         break
     colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
     socket_pose = np.concatenate([socket_pose, colObs_pose])
 
@@ -365,6 +380,36 @@ def rgbd_to_pointcloud(
     xyzrgb = np.hstack([xyz_t[:, :3], color])
     return xyzrgb, xyz
     
+
+def filter_pc(pc):
+    pc = np.array(pc)
+
+    ### save the point cloud as pcd
+    import open3d as o3d
+    from sklearn.cluster import DBSCAN
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pc)
+
+
+    cl, ind = pcd.remove_radius_outlier(nb_points=40, radius=0.05)
+    cl_pts = np.asarray(cl.points)
+
+    dbscan = DBSCAN(eps=0.03, min_samples=10)
+    labels = dbscan.fit_predict(cl_pts)
+    valid_mask = labels != -1
+
+    unique_labels = set(labels)
+    n_clusters_ = len(unique_labels) - (1 if -1 in labels else 0)
+    if n_clusters_ > 1:
+        largest_cluster_label = max(unique_labels, key = list(labels).count)
+        largest_cluster_mask  = labels == largest_cluster_label
+        valid_mask = valid_mask & largest_cluster_mask        
+
+    cl_pts_filtered = cl_pts[valid_mask]
+
+    return cl_pts_filtered
+
 def resize_point_cloud(point_cloud, target_size):
     num_points = point_cloud.shape[0]
 

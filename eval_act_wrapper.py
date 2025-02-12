@@ -88,14 +88,14 @@ def limit_step_diff(target_qpos, qpos, max_diff = 0.06):
 
 class ACT_Evaluator(object):
     def __init__(self, with_planning = False, task_name = None, \
-                 init_obj_states_arr = None, use_viewer = False, \
-                    use_plt = False, vid_save_path = False):
+                 use_viewer = False, \
+                    use_plt = False, vid_save_path = False, **kwargs):
         self.with_planning = with_planning
         self.image_list = []
         self.episode = []
         
         arg_dict = self.get_default_args(task_name=task_name)
-        self.initialize(arg_dict, init_obj_states_arr = init_obj_states_arr)
+        self.initialize(arg_dict, **kwargs)
 
         self.init_gui(use_viewer = use_viewer, use_plt = use_plt)
         self.vid_save_path = vid_save_path
@@ -167,7 +167,7 @@ class ACT_Evaluator(object):
 
         return vars(parser.parse_args())
     
-    def initialize(self, args, init_obj_states_arr = None):
+    def initialize(self, args, **kwargs):
         set_seed(1)
         # command line parameters
         is_eval = args['eval']
@@ -278,7 +278,7 @@ class ACT_Evaluator(object):
             env_max_reward = 0
         else:
             from sim_env import make_sim_env
-            self.env = make_sim_env(task_name, init_obj_states_arr = init_obj_states_arr)
+            self.env = make_sim_env(task_name, **kwargs)
             env_max_reward = self.env.task.max_reward
 
         self.query_frequency = policy_config['num_queries']

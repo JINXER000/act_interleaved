@@ -15,7 +15,7 @@ from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 
 
 from act_utils import sample_box_pose, sample_insertion_pose, sample_insertion_xyyaw, sample_insertion_unsafe, \
-    get_geom_ids, rgbd_to_pointcloud, resize_point_cloud
+    get_geom_ids, rgbd_to_pointcloud, resize_point_cloud, filter_pc
 import math
 import IPython
 e = IPython.embed
@@ -23,7 +23,7 @@ e = IPython.embed
 BOX_POSE = [None] # to be changed from outside
 INIT_ARM_POSE = [None] # to be changed from outside
 
-def make_sim_env(task_name, init_obj_states_arr = None):
+def make_sim_env(task_name, **kwargs):
     """
     Environment for simulated robot bi-manual manipulation, with joint position control
     Action space:      [left_arm_qpos (6),             # absolute joint position
@@ -44,7 +44,7 @@ def make_sim_env(task_name, init_obj_states_arr = None):
     if 'sim_insertion_tamp' in task_name:
         xml_path = os.path.join(XML_DIR, f'bimanual_viperx_insertion.xml')
         physics = mujoco.Physics.from_xml_path(xml_path)
-        task = TAMPInsertionTask(random=False, init_obj_states_arr=init_obj_states_arr)
+        task = TAMPInsertionTask(random=False, **kwargs)
         env = control.Environment(physics, task, time_limit=50, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
 
@@ -198,11 +198,11 @@ class InsertionTask(BimanualViperXTask):
             physics.named.data.qpos[:16] = START_ARM_POSE
             np.copyto(physics.data.ctrl, START_ARM_POSE)
             if BOX_POSE[0] is  None:
-                BOX_POSE[0] = np.concatenate(sample_insertion_pose(has_col = True))
+                BOX_POSE[0] = np.concatenate(self.sample_insertion_fn())
 
             # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
             # print(f"{BOX_POSE=}")
-            physics.named.data.qpos[-7*3:] = BOX_POSE[0] # last is highcol
+            physics.named.data.qpos[-7*self.obj_num:] = BOX_POSE[0] # last is highcol
         super().initialize_episode(physics)
 
     @staticmethod
@@ -252,11 +252,21 @@ class InsertionTask(BimanualViperXTask):
 
 
 class TAMPInsertionTask(InsertionTask):
-    def __init__(self, random=None, init_obj_states_arr = None):
+    def __init__(self, random=None, init_obj_states_arr = None, has_col = False, scene = 'ID', **kwargs):
         super().__init__(random=random)
         self.obs_idx = 0
         self.recorded_pc = False
         self.init_obj_states_arr = init_obj_states_arr
+        self.has_col = has_col
+        self.obj_num = 2+int(self.has_col)
+        if scene == 'ID':
+            self.sample_insertion_fn = sample_insertion_pose
+        elif scene == 'OOD_XYYAW':
+            self.sample_insertion_fn = sample_insertion_xyyaw
+        elif scene == 'UNSAFE':
+            self.sample_insertion_fn = sample_insertion_unsafe
+        else:
+            raise NotImplementedError("scene not implemented")
 
     def initialize_episode(self, physics):
         """Sets the state of the environment at the start of each episode."""
@@ -267,16 +277,16 @@ class TAMPInsertionTask(InsertionTask):
             np.copyto(physics.data.ctrl, START_ARM_POSE)
 
             if BOX_POSE[0] is  None:
-                    if self.init_obj_states_arr is not None:
-                        BOX_POSE[0] = self.init_obj_states_arr
-                    else:
-                        BOX_POSE[0] = np.concatenate(sample_insertion_unsafe())
+                if self.init_obj_states_arr is not None:
+                    BOX_POSE[0] = self.init_obj_states_arr
+                else:
+                    BOX_POSE[0] = np.concatenate(self.sample_insertion_fn())
             else:
                 self.init_obj_states_arr = BOX_POSE[0]
             print('initial obj poses:', BOX_POSE[0])
 
             # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
-            physics.named.data.qpos[-7*3:] = BOX_POSE[0] # last is highcol
+            physics.named.data.qpos[-7*self.obj_num:] = BOX_POSE[0] # last is highcol
             # print(f"{BOX_POSE=}")
         super().initialize_episode(physics)
 
@@ -360,6 +370,7 @@ class TAMPInsertionTask(InsertionTask):
         if not self.recorded_pc and self.obs_idx == 50:
             obs['socket_pc'] = dict()
             obs['peg_pc'] = dict()
+            obs['highcol_pc'] = dict()
             for cam_id in ['angle', 'back']:
 
                 obs['depth'] = dict()
@@ -368,30 +379,36 @@ class TAMPInsertionTask(InsertionTask):
                 raw_seg= physics.render(height=480, width=640, camera_id=cam_id, segmentation=True)
                 processed_seg = raw_seg[:, :, 0].astype(np.uint8) 
                 obs['seg'][cam_id] = processed_seg+ 1  # for visualization
-
-
-                peg_mask = self.get_mask('peg', physics, processed_seg)
-                socket_mask = self.get_mask('socket', physics, processed_seg)
-
                 cam_intrinsics = self.get_cam_intrinsics(physics, cam_id)
                 cam_extrinsics = self.get_cam_extrinsics(physics, cam_id)
 
-                socket_pc = self.get_pc_with_mask(socket_mask, cam_intrinsics, cam_extrinsics, \
-                    obs['depth'][cam_id], obs['images'][cam_id])
+
+                peg_mask = self.get_mask('peg', physics, processed_seg)
                 peg_pc = self.get_pc_with_mask(peg_mask, cam_intrinsics, cam_extrinsics, \
                     obs['depth'][cam_id], obs['images'][cam_id])
-
-                obs['socket_pc'][cam_id] = socket_pc
                 obs['peg_pc'][cam_id] = peg_pc
+                ## merge front and back to top
+                self.merge_to_top(obs['peg_pc'], 'top', obs['peg_pc'][cam_id])
 
+                socket_mask = self.get_mask('socket', physics, processed_seg)
+                socket_pc = self.get_pc_with_mask(socket_mask, cam_intrinsics, cam_extrinsics, \
+                    obs['depth'][cam_id], obs['images'][cam_id])
+                obs['socket_pc'][cam_id] = socket_pc
                 ## merge front and back to top
                 self.merge_to_top(obs['socket_pc'], 'top', obs['socket_pc'][cam_id])
-                self.merge_to_top(obs['peg_pc'], 'top', obs['peg_pc'][cam_id])
+
+                if self.has_col:
+                    highcol_mask = self.get_mask('highcol', physics, processed_seg)
+                    highcol_pc = self.get_pc_with_mask(highcol_mask, cam_intrinsics, cam_extrinsics, \
+                        obs['depth'][cam_id], obs['images'][cam_id])
+                    obs['highcol_pc'][cam_id] = highcol_pc
+                    ## merge front and back to top
+                    self.merge_to_top(obs['highcol_pc'], 'top', obs['highcol_pc'][cam_id])
 
             self.recorded_pc = True
 
             # ### debug using o3d
-            # self.vis_frame_pc(obs['peg_pc']['top'])
+            # self.vis_frame_pc(obs['socket_pc']['top'])
         return obs
 
     def get_mask(self, obj_name, physics, raw_seg):
@@ -454,8 +471,10 @@ class TAMPInsertionTask(InsertionTask):
         xyzrgb, xyz_cam = rgbd_to_pointcloud(color, depth, \
             cam_intrinsics, cam_extrinsics, seg_mask=seg_mask)
 
+        ## filter the outliers
+        filtered_xyz = filter_pc(xyzrgb[:, :3])
         ## downsample to target_size
-        xyz_selected = resize_point_cloud(xyzrgb[:, :3], target_size)
+        xyz_selected = resize_point_cloud(filtered_xyz, target_size)
 
        ### save the point cloud
         if save_ply:

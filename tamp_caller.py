@@ -86,13 +86,17 @@ def get_box_poses(obj_info_ls):
 
 
 ## input pc in the mujoco frame, should transform to pybullet frame
-def save_mj_obsevation(ts, task_name, npz_path = None):
+def save_mj_obsevation(ts, task_name, npz_path = None, has_col =False):
     pc_dict = {}
     if task_name == 'sim_insertion_tamp':
         peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, -0.01, 0.0])
         socket_pc = ts.observation['socket_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, 0.05, 0.0])
 
         pc_dict.update({'peg': peg_pc, 'socket': socket_pc})
+
+        if has_col:
+            colObs_pc = ts.observation['highcol_pc']['top'] + MJ2BULLET_OFFSET
+            pc_dict.update({'colObs': colObs_pc})
     else:
         raise NotImplementedError("This task is not supported")
     
