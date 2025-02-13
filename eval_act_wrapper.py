@@ -382,6 +382,8 @@ class ACT_Evaluator(object):
             self.ts = self.get_ts_until_pc()
 
     def replay_tamp_step(self, qpos):
+        # cur_qpos = self.ts.observation['qpos']
+        # qpos_diff = qpos - cur_qpos
         self.ts = self.env.step(qpos)
         self.append_img(self.ts)
         self.update_gui()

@@ -234,7 +234,7 @@ def sample_insertion_unsafe():
         obs_xy = colObs_xyz[:2]
         peg_xy = peg_position[:2]
         socket_xy = socket_position[:2]
-        if np.linalg.norm(obs_xy - peg_xy) > 0.05 and np.linalg.norm(obs_xy - socket_xy) > 0.05:
+        if np.linalg.norm(obs_xy - peg_xy) > 0.13 and np.linalg.norm(obs_xy - socket_xy) > 0.13:
             colObs_pose = np.concatenate([colObs_xyz, np.array([1, 0, 0, 0])])
             break
     # colObs_pose = np.array([0.0, 0.5, 0.15, 1, 0, 0, 0])
