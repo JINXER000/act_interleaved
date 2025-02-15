@@ -45,10 +45,10 @@
             <geom  pos="-0.06 0.00 -0.02" quat = "1 0 0 0" type="mesh" mesh="tricol_socket"  name="socket_tricol" rgba="0 0 1 1" />
         </body>
 
-        <body name="highcol" pos="0.0 0.5 0.15">
+        <body name="colObs" pos="0.0 0.5 0.15">
             <joint name="col_joint" type="free" frictionloss="0.01" />
             <inertial pos="0 0 0" mass="0.05" diaginertia="0.002 0.002 0.002" />
-            <geom  pos="-0.0 0.00 -0.0" quat = "1 0 0 0" type="mesh" mesh="highcol"  name="highcol" rgba="0 1 1 1"  condim="4" solimp="2 1 0.01" solref="0.01 1" friction="1 0.005 0.0001"/>
+            <geom  pos="-0.0 0.00 -0.0" quat = "1 0 0 0" type="mesh" mesh="colObs"  name="colObs" rgba="0 1 1 1"  condim="4" solimp="2 1 0.01" solref="0.01 1" friction="1 0.005 0.0001"/>
         </body>
     </worldbody>
 

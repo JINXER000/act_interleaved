@@ -89,14 +89,20 @@ def get_box_poses(obj_info_ls):
 def save_mj_obsevation(ts, task_name, npz_path = None, has_col =False):
     pc_dict = {}
     if task_name == 'sim_insertion_tamp':
-        peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, -0.01, 0.0])
-        socket_pc = ts.observation['socket_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, 0.05, 0.0])
+        for obs_key in ts.observation.keys():
+            if 'pc' not in obs_key:
+                continue
+            obj_name = obs_key.split('_')[0]
+            pc_array = ts.observation[obs_key]['top'] + MJ2BULLET_OFFSET
+            pc_dict.update({obj_name: pc_array})
+        # peg_pc = ts.observation['peg_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, -0.01, 0.0])
+        # socket_pc = ts.observation['socket_pc']['top'] + MJ2BULLET_OFFSET # + np.array([0, 0.05, 0.0])
 
-        pc_dict.update({'peg': peg_pc, 'socket': socket_pc})
+        # pc_dict.update({'peg': peg_pc, 'socket': socket_pc})
 
-        if has_col:
-            colObs_pc = ts.observation['highcol_pc']['top'] + MJ2BULLET_OFFSET
-            pc_dict.update({'colObs': colObs_pc})
+        # if has_col:
+        #     colObs_pc = ts.observation['colObs_pc']['top'] + MJ2BULLET_OFFSET
+        #     pc_dict.update({'colObs': colObs_pc})
     else:
         raise NotImplementedError("This task is not supported")
     
@@ -122,10 +128,10 @@ def iterate_sequence(seq):
         if not hasattr(primitive, 'path'):
             continue
 
-        if hasattr(primitive, 'refined_qpos'):
-            path_to_execute = primitive.refined_qpos
-        else:
-            path_to_execute = primitive.path
+        # if hasattr(primitive, 'refined_qpos'):
+        #     path_to_execute = primitive.refined_qpos
+        # else:
+        path_to_execute = primitive.path
 
         for cfg in path_to_execute:
             next_conf_14d = cur_conf_14d.copy()

@@ -14,7 +14,8 @@ from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 
 
-from act_utils import sample_box_pose, sample_insertion_pose, sample_insertion_xyyaw, sample_insertion_unsafe, \
+from act_utils import sample_box_pose, sample_insertion_pose, sample_insertion_xyyaw,\
+    sample_insertion_xyood, sample_insertion_unreachable, sample_insertion_unsafe, \
     get_geom_ids, rgbd_to_pointcloud, resize_point_cloud, filter_pc
 import math
 import IPython
@@ -202,7 +203,7 @@ class InsertionTask(BimanualViperXTask):
 
             # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
             # print(f"{BOX_POSE=}")
-            physics.named.data.qpos[-7*self.obj_num:] = BOX_POSE[0] # last is highcol
+            physics.named.data.qpos[-7*self.obj_num:] = BOX_POSE[0] # last is colObs
         super().initialize_episode(physics)
 
     @staticmethod
@@ -252,17 +253,21 @@ class InsertionTask(BimanualViperXTask):
 
 
 class TAMPInsertionTask(InsertionTask):
-    def __init__(self, random=None, init_obj_states_arr = None, has_col = False, scene = 'ID', **kwargs):
+    def __init__(self, random=None, init_obj_states_arr = None,  scene = 'ID', **kwargs):
         super().__init__(random=random)
         self.obs_idx = 0
         self.recorded_pc = False
         self.init_obj_states_arr = init_obj_states_arr
-        self.has_col = has_col
-        self.obj_num = 2+int(self.has_col)
+        self.scene = scene
+        self.obj_num = 3 if scene == 'UNSAFE' else 2
         if scene == 'ID':
             self.sample_insertion_fn = sample_insertion_pose
+        elif scene == 'OOD':
+            self.sample_insertion_fn = sample_insertion_xyood
         elif scene == 'OOD_XYYAW':
             self.sample_insertion_fn = sample_insertion_xyyaw
+        elif scene == 'UNREACHABLE':
+            self.sample_insertion_fn = sample_insertion_unreachable
         elif scene == 'UNSAFE':
             self.sample_insertion_fn = sample_insertion_unsafe
         else:
@@ -286,7 +291,7 @@ class TAMPInsertionTask(InsertionTask):
             print('initial obj poses:', BOX_POSE[0])
 
             # physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects
-            physics.named.data.qpos[-7*self.obj_num:] = BOX_POSE[0] # last is highcol
+            physics.named.data.qpos[-7*self.obj_num:] = BOX_POSE[0] # last is colObs
             # print(f"{BOX_POSE=}")
         super().initialize_episode(physics)
 
@@ -370,7 +375,9 @@ class TAMPInsertionTask(InsertionTask):
         if not self.recorded_pc and self.obs_idx == 50:
             obs['socket_pc'] = dict()
             obs['peg_pc'] = dict()
-            obs['highcol_pc'] = dict()
+            if self.scene == 'UNSAFE':
+                obs['colObs_pc'] = dict()
+
             for cam_id in ['angle', 'back']:
 
                 obs['depth'] = dict()
@@ -381,7 +388,6 @@ class TAMPInsertionTask(InsertionTask):
                 obs['seg'][cam_id] = processed_seg+ 1  # for visualization
                 cam_intrinsics = self.get_cam_intrinsics(physics, cam_id)
                 cam_extrinsics = self.get_cam_extrinsics(physics, cam_id)
-
 
                 peg_mask = self.get_mask('peg', physics, processed_seg)
                 peg_pc = self.get_pc_with_mask(peg_mask, cam_intrinsics, cam_extrinsics, \
@@ -397,13 +403,13 @@ class TAMPInsertionTask(InsertionTask):
                 ## merge front and back to top
                 self.merge_to_top(obs['socket_pc'], 'top', obs['socket_pc'][cam_id])
 
-                if self.has_col:
-                    highcol_mask = self.get_mask('highcol', physics, processed_seg)
-                    highcol_pc = self.get_pc_with_mask(highcol_mask, cam_intrinsics, cam_extrinsics, \
+                if self.scene == 'UNSAFE':
+                    colObs_mask = self.get_mask('colObs', physics, processed_seg)
+                    colObs_pc = self.get_pc_with_mask(colObs_mask, cam_intrinsics, cam_extrinsics, \
                         obs['depth'][cam_id], obs['images'][cam_id])
-                    obs['highcol_pc'][cam_id] = highcol_pc
+                    obs['colObs_pc'][cam_id] = colObs_pc
                     ## merge front and back to top
-                    self.merge_to_top(obs['highcol_pc'], 'top', obs['highcol_pc'][cam_id])
+                    self.merge_to_top(obs['colObs_pc'], 'top', obs['colObs_pc'][cam_id])
 
             self.recorded_pc = True
 
