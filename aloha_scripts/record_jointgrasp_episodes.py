@@ -19,7 +19,7 @@ from record_episodes import get_auto_index, print_dt_diagnosis,\
 import sys
 sys.path.append('/home/xuhang/interbotix_ws/src/pddlstream_aloha/')
 
-from examples.pybullet.aloha_real.scripts.ros_openworld_base import openworld_base
+from examples.pybullet.aloha_real.scripts.ros_openworld_base import observation_to_file
 from examples.pybullet.aloha_real.scripts.aloha_tamp_constants import PERCEPT_ARM_POSE, qpos_to_eetrans, RBT_ID
 
 
@@ -102,8 +102,9 @@ def sense_tabletop(master_bot_left, master_bot_right, puppet_bot_left, puppet_bo
             os.makedirs(v)
 
 
-    acting_base = openworld_base({}, only_perception = True)
-    acting_base.obtain_sensor_data(cam_dir_mapping)
+    # acting_base = observation_to_file({}, only_perception = True)
+    # acting_base.obtain_sensor_data(cam_dir_mapping)
+    observation_to_file(cam_dir_mapping)
 
     color_imgs = {}
     depth_imgs = {}
@@ -330,7 +331,7 @@ def debug():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='aloha_transfer_tape', required=False)
+    parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='cup_random', required=False)
     parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=0, required=False)
     main(vars(parser.parse_args()))
     # debug()

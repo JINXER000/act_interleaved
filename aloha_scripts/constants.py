@@ -24,7 +24,7 @@ TASK_CONFIGS = {
     },
     'cup_random':{
         'dataset_dir': DATA_DIR + '/cup_random',
-        'num_episodes': 50,
+        'num_episodes': 20,
         'episode_len': 500,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
@@ -50,6 +50,12 @@ TASK_CONFIGS = {
         'dataset_dir': DATA_DIR + '/hang_pants',
         'num_episodes': 50,
         'episode_len': 1000,
+        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+    },
+    'harrypotter':{
+        'dataset_dir': DATA_DIR + '/harrypotter',
+        'num_episodes': 50,
+        'episode_len': 600,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
 }

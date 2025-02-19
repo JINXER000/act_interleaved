@@ -144,10 +144,7 @@
     <param name="autoexposure" value="true"/>
   </node>
 
-<!-- topic remapper -->
-  <node pkg="aloha" type="cam_remapper.py" name="cam_remapper" output="screen">
-    <param name="use_sim_time" value="false" />
-  </node>
+
 
   <!-- <include  file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
   </include> -->
@@ -158,5 +155,9 @@
   <param name="filters" value="$(arg filters)" />
   </include>
 
-
+<!-- topic remapper -->
+  <node pkg="aloha" type="cam_remapper.py" name="topic_remapper_node" output="screen">
+    <param name="use_sim_time" value="false" />
+  </node>
+  
 </launch>
