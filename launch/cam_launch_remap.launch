@@ -1,0 +1,21 @@
+<launch>
+
+<!-- launch 2 realsense cameras -->
+<!-- location: /opt/ros/noetic/share/realsense2_camera/launch/rs_2cam_aligned_depth.launch -->
+  <include  file="$(find realsense2_camera)/launch/rs_4cam_aligned_depth.launch">
+  <param name="filters" value="$(arg filters)" />
+  </include>
+
+
+<!-- cam1 rgb to usb_cam_low -->
+<node pkg="topic_tools" type="relay" name="color_remap_cam1" args="/camera_1/color/image_raw /usb_cam_low/image_raw" />
+
+<!-- cam2 rgb to usb_cam_high -->
+<node pkg="topic_tools" type="relay" name="color_remap" args="/camera_2/color/image_raw /usb_cam_high/image_raw" />
+
+<!-- cam3 rgb to usb_cam_left_wrist -->
+<node pkg="topic_tools" type="relay" name="color_remap_cam3" args="/camera_3/color/image_raw /usb_cam_left_wrist/image_raw" />
+
+<!-- cam4 rgb to usb_cam_right_wrist -->
+<node pkg="topic_tools" type="relay" name="color_remap_cam4" args="/camera_4/color/image_raw /usb_cam_right_wrist/image_raw" />
+</launch>

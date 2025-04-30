@@ -331,8 +331,8 @@ def debug():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='cup_random', required=False)
-    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=0, required=False)
+    parser.add_argument('--task_name', action='store', type=str, help='Task name.', default='aloha_transfer_tape', required=False)
+    parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', default=35, required=False)
     main(vars(parser.parse_args()))
     # debug()
 

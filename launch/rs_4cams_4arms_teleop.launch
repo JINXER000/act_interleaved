@@ -19,7 +19,8 @@
   <arg name="robot_name_master_right"           value="master_right"/>
   <arg name="robot_name_puppet_right"           value="puppet_right"/>
 
-  <arg name="filters"                           default="decimation,temporal"/>
+  <arg name="filters"                           default="temporal"/> 
+  <!-- decimation -->
 
   <include if="$(arg launch_driver)" file="$(find interbotix_xsarm_control)/launch/xsarm_control.launch">
     <arg name="robot_model"                       value="$(arg robot_model_master)"/>
@@ -89,86 +90,13 @@
     args="0 0.25 0 0 0 0 /world /$(arg robot_name_puppet_right)/base_link"/>
 
 
-  <!-- <remap from="/camera/aligned_depth_to_color/image_raw" to="/usb_high_depth/image_raw" />
-  <remap from="/camera/color/image_raw" to="/usb_cam_high/image_raw" />
-  <remap from="/camera/color/camera_info" to="/usb_cam_high/camera_info" />
+  
 
-  <include  file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
-    <param name="tf_prefix" value="measured/camera" />
-  </include> -->
-
-  <!-- <remap from="/camera_1/aligned_depth_to_color/image_raw" to="/usb_high_depth/image_raw" />
-  <remap from="/camera_1/color/image_raw" to="/usb_cam_high/image_raw" />
-  <remap from="/camera_1/color/camera_info" to="/usb_cam_high/camera_info" /> -->
-
-  <!-- <include  file="$(find realsense2_camera)/launch/rs_2cam_aligned_depth.launch">
-  </include> -->
+  <include  file="$(find aloha)/launch/cam_launch_remap.launch">
 
 
-  <node name="usb_cam_low" pkg="usb_cam" type="usb_cam_node" output="screen" >
-    <param name="video_device" value="/dev/CAM_LOW" />
-    <param name="framerate" value="60" />
-    <param name="image_width" value="640" />
-    <param name="image_height" value="480" />
-    <param name="pixel_format" value="yuyv" />
-    <param name="camera_frame_id" value="usb_cam" />
-    <param name="io_method" value="mmap"/>
-    <param name="autofocus" value="false"/>
-    <param name="focus" value="35"/>
-    <param name="autoexposure" value="true"/>
-  </node>
-
-  <node name="usb_cam_left_wrist" pkg="usb_cam" type="usb_cam_node" output="screen" >
-    <param name="video_device" value="/dev/CAM_LEFT_WRIST" />
-    <param name="framerate" value="60" />
-    <param name="image_width" value="640" />
-    <param name="image_height" value="480" />
-    <param name="pixel_format" value="yuyv" />
-    <param name="camera_frame_id" value="usb_cam" />
-    <param name="io_method" value="mmap"/>
-    <param name="autofocus" value="false"/>
-    <param name="focus" value="40"/>
-    <param name="autoexposure" value="true"/>
-  </node>
-
-  <node name="usb_cam_right_wrist" pkg="usb_cam" type="usb_cam_node" output="screen" >
-    <param name="video_device" value="/dev/CAM_RIGHT_WRIST" />
-    <param name="framerate" value="60" />
-    <param name="image_width" value="640" />
-    <param name="image_height" value="480" />
-    <param name="pixel_format" value="yuyv" />
-    <param name="camera_frame_id" value="usb_cam" />
-    <param name="io_method" value="mmap"/>
-    <param name="autofocus" value="false"/>
-    <param name="focus" value="40"/>
-    <param name="autoexposure" value="true"/>
-  </node>
-
-
-
-  <!-- <include  file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
-  </include> -->
-
-<!-- launch 2 realsense cameras -->
-<!-- location: /opt/ros/noetic/share/realsense2_camera/launch/rs_2cam_aligned_depth.launch -->
-  <include  file="$(find realsense2_camera)/launch/rs_2cam_aligned_depth.launch">
   <param name="filters" value="$(arg filters)" />
   </include>
 
-<!-- topic remapper -->
-  <!-- <node pkg="aloha" type="cam_remapper.py" name="topic_remapper_node" output="screen">
-    <param name="use_sim_time" value="false" />
-  </node> -->
-  
-   <!-- 重映射 depth topic 并保留原始 topic -->
-  <node pkg="topic_tools" type="relay" name="depth_remap" args="/camera_2/aligned_depth_to_color/image_raw /usb_high_depth/image_raw" />
-  <node pkg="topic_tools" type="relay" name="depth_original" args="/camera_2/aligned_depth_to_color/image_raw /camera_2/aligned_depth_to_color/image_raw_original" />
 
-  <!-- 重映射 color topic 并保留原始 topic -->
-  <node pkg="topic_tools" type="relay" name="color_remap" args="/camera_2/color/image_raw /usb_cam_high/image_raw" />
-  <node pkg="topic_tools" type="relay" name="color_original" args="/camera_2/color/image_raw /camera_2/color/image_raw_original" />
-
-  <!-- 重映射 camera_info topic 并保留原始 topic -->
-  <node pkg="topic_tools" type="relay" name="camera_info_remap" args="/camera_2/color/camera_info /usb_cam_high/camera_info" />
-  <node pkg="topic_tools" type="relay" name="camera_info_original" args="/camera_2/color/camera_info /camera_2/color/camera_info_original" /> 
 </launch>

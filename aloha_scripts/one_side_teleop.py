@@ -31,10 +31,12 @@ def press_to_start(master_bot):
     # disable torque for only gripper joint of master robot to allow user movement
     master_bot.dxl.robot_torque_enable("single", "gripper", False)
     print(f'Close the gripper to start')
-    close_thresh = -0.3
+    close_thresh = -0.01 
+    ## aloha2_master_gripper: max=0.84982, min=-0.024543
     pressed = False
     while not pressed:
         gripper_pos = get_arm_gripper_positions(master_bot)
+        print(gripper_pos)
         if gripper_pos < close_thresh:
             pressed = True
         time.sleep(DT/10)
@@ -63,6 +65,12 @@ def teleop(robot_side):
         puppet_bot.gripper.core.pub_single.publish(gripper_command)
         # sleep DT
         time.sleep(DT)
+
+        # ## aloha2_puppet_gripper: max=0.84675, min=-0.46786
+        ## min=-0.49, max=0.52
+        puppet_gripper_pose = get_arm_gripper_positions(puppet_bot)
+        print(f"puppet gripper pose: {puppet_gripper_pose}") 
+        
 
 
 if __name__=='__main__':

@@ -51,11 +51,12 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
     master_bot_left.dxl.robot_torque_enable("single", "gripper", False)
     master_bot_right.dxl.robot_torque_enable("single", "gripper", False)
     print(f'Close the gripper to start')
-    close_thresh = -0.3
+    close_thresh = -0.01 #-0.3
     pressed = False
     while not pressed:
         gripper_pos_left = get_arm_gripper_positions(master_bot_left)
         gripper_pos_right = get_arm_gripper_positions(master_bot_right)
+        print(f"Gripper pos left: {gripper_pos_left}, Gripper pos right: {gripper_pos_right}")
         if (gripper_pos_left < close_thresh) and (gripper_pos_right < close_thresh):
             pressed = True
         time.sleep(DT/10)
